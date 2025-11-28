@@ -52,13 +52,16 @@
     "@heroui/user": "2.2.22",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.28",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "clsx": "2.1.1",
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "next": "^15.5.6",
     "next-themes": "0.4.6",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "redis": "^5.10.0"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "15.3.4",
