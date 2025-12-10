@@ -1,17 +1,17 @@
 version: '3.8'
 
 services:
-  # 1. The Database
+  # 1. Database
   redis:
     image: redis/redis-stack:latest
     container_name: task_tracker_redis
     ports:
-      - "6379:6379"   # Standard Redis
-      - "8001:8001"   # RedisInsight UI
+      - "6379:6379"
+      - "8001:8001"
     volumes:
       - ./redis-data:/data
 
-  # 2. The Backend
+  # 2. Backend
   backend:
     build: ./Backend
     container_name: task_tracker_backend
@@ -20,10 +20,17 @@ services:
       - "4000:4000"
     environment:
       - PORT=4000
-      - REDIS_URL=redis://redis:6379  # connects to service 'redis'
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev_secret
     depends_on:
       - redis
-    networks:
-      - default
 
+  # 3. Frontend (New)
+  frontend:
+    build: ./Frontend
+    container_name: task_tracker_frontend
+    restart: always
+    ports:
+      - "3000:80"  # Map Host Port 3000 -> Container Port 80 (Nginx)
+    depends_on:
+      - backend
