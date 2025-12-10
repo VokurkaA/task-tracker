@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardBody, CardFooter, Chip } from "@heroui/react";
-import { Task } from "../hooks/useTasks";
+import type { Task } from "../hooks/useTasks";
 
 interface TaskListProps {
   tasks: Task[];

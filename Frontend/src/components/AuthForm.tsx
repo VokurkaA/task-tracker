@@ -22,10 +22,9 @@ export const AuthForm = ({ onLoginSuccess }: AuthFormProps) => {
         alert("Account created! Please log in.");
       } else {
         const { data } = await api.post('/auth/login', { email, password });
-        const typedData = data as { token: string; user: { id: string } };
-        onLoginSuccess(typedData.token, typedData.user.id);
+        onLoginSuccess(data.token, data.user.id);
       }
-    } catch (err) {
+    } catch {
       alert("Authentication failed");
     } finally {
       setLoading(false);

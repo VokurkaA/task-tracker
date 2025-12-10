@@ -3,7 +3,7 @@ import { Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, useDisclosure, 
 import { AuthForm } from './components/AuthForm';
 import { TaskList } from './components/TaskList';
 import { TaskModal } from './components/TaskModal';
-import { useTasks, Task } from './hooks/useTasks';
+import { useTasks, type Task } from './hooks/useTasks';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));

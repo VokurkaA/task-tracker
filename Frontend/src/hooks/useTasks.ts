@@ -66,7 +66,7 @@ export const useTasks = (userId: string | undefined) => {
   });
 
   const updateTask = useMutation({
-    mutationFn: ({ id, data }: { id: string;yb: Partial<Task> }) => api.put(`/tasks/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Task> }) => api.put(`/tasks/${id}`, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 

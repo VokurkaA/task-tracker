@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Checkbox, Chip, Divider, Avatar } from "@heroui/react";
-import { Task, Subtask } from '../hooks/useTasks';
+import type { Task, Subtask } from '../hooks/useTasks';
 import { MdSend } from "react-icons/md";
 
 interface TaskModalProps {
@@ -113,7 +113,7 @@ export const TaskModal = ({ task, isOpen, onClose, onUpdate, onAddSubtask, onTog
               <Input 
                 size="sm" 
                 placeholder="colleague@school.edu" 
-                startContent={<MdSend className="text-default-400"/>}
+                startContent={<MdSend color="#a3a3a3" />}
                 value={shareEmail}
                 onValueChange={setShareEmail}
               />
