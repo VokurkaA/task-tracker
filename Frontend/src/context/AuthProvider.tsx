@@ -12,30 +12,47 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        if (token && user?.id) {
-            const newSocket = io('http://localhost:4000', {
-                auth: {userId: user.id},
-            });
+        let socketInstance: Socket | null = null;
 
-            newSocket.on('connect', () => {
-                console.log('Connected to socket');
-            });
+        const initAuth = async () => {
+            if (token && !user) {
+                try {
+                    const {data} = await api.get('/auth/me');
+                    setUser(data);
+                } catch (err) {
+                    setToken(null);
+                    setUser(null);
+                    localStorage.removeItem('token');
+                }
+                return;
+            }
 
-            newSocket.on('update', (event) => {
-                console.log('Real-time update received:', event);
-                queryClient.invalidateQueries({queryKey: ['tasks']});
-            });
+            if (token && user?.id) {
+                socketInstance = io('http://localhost:4000', {
+                    auth: {userId: user.id},
+                });
 
-            const timeoutId = setTimeout(() => {
-                setSocket(newSocket);
-            }, 0);
+                socketInstance.on('connect', () => {
+                    console.log('Connected to socket');
+                });
 
-            return () => {
-                clearTimeout(timeoutId);
-                newSocket.disconnect();
-            };
-        }
-    }, [token, user?.id, queryClient]);
+                socketInstance.on('update', (event) => {
+                    console.log('Real-time update received:', event);
+                    queryClient.invalidateQueries({queryKey: ['tasks']});
+                });
+
+                setSocket(socketInstance);
+            }
+        };
+
+        initAuth();
+
+        return () => {
+            if (socketInstance) {
+                socketInstance.disconnect();
+            }
+        };
+    }, [token, user, queryClient]);
 
     const login = async (credentials: LoginCredentials) => {
         const {data} = await api.post<AuthResponse>('/auth/login', credentials);
@@ -45,8 +62,10 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
     };
 
     const signup = async (credentials: SignupCredentials) => {
-        await api.post('/auth/signup', credentials);
-        await login(credentials);
+        const {data} = await api.post<AuthResponse>('/auth/signup', credentials);
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
     };
 
     const logout = () => {

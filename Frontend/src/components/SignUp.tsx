@@ -59,7 +59,7 @@ export default function SignUp({
             setError(err?.response?.data?.error || "Sign up failed");
         }
     };
-    
+
     return (<div className="relative p-4 h-svh flex items-center justify-center">
         <Form validationBehavior="native" onSubmit={onSubmit}>
             <Card className="p-8 min-w-md">
