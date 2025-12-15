@@ -1,15 +1,13 @@
+import 'dotenv/config'
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { initRedisIndexes } from './config/redis.js';
 import { initSocket } from './services/socketService.js';
 import { requireAuth } from './middleware/auth.js';
 import * as Auth from './controllers/authController.js';
 import * as Task from './controllers/taskController.js';
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);

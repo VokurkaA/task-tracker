@@ -1,15 +1,18 @@
-import SignIn from "./components/SignIn.tsx";
+import {useState} from "react";
+import SignUp from "./components/SignUp";
+import SignIn from "./components/SignIn";
+import {useAuth} from "./hooks/useAuth";
 
 function App() {
-    return (<div className='h-svh flex items-center justify-center'>
-            {/*<Card>*/}
-            {/*    <ThemeToggle/>*/}
-            {/*    <Button>*/}
-            {/*        My Button*/}
-            {/*    </Button>*/}
-            {/*</Card>*/}
-            <SignIn/>
-        </div>);
+    const {user} = useAuth();
+    const [activeScreen, setActiveScreen] = useState<"SignIn" | "SignUp">("SignIn");
+
+    if (user) {
+        return <div>hello</div>;
+    }
+
+    return activeScreen === "SignUp" ? (<SignUp setActiveScreen={setActiveScreen}/>) : (
+        <SignIn setActiveScreen={setActiveScreen}/>);
 }
 
-export default App
+export default App;
