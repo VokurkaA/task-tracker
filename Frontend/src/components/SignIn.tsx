@@ -6,52 +6,42 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-    Description,
     FieldError,
     Form,
     InputGroup,
     Label,
     Link,
     LinkIcon,
-    TextField
+    TextField,
 } from "@heroui/react";
 import {Icon} from "@iconify/react";
 import * as React from "react";
 import {type SetStateAction, useState} from "react";
-import {useAuth} from "../hooks/useAuth.ts";
+import {useAuth} from "../hooks/useAuth";
 
-export default function SignIn({setActiveScreen}: {
-    setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void
+export default function SignIn({
+                                   setActiveScreen,
+                               }: {
+    setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void;
 }) {
     const {login} = useAuth();
     const [error, setError] = useState<string | null>(null);
 
-    const validatePassword = (val: string) => {
-        if (val.length < 6) {
-            return "Password must be at least 6 characters";
-        }
-        if (!/[A-Z]/.test(val)) {
-            return "Password must contain at least one uppercase letter";
-        }
-        if (!/[0-9]/.test(val)) {
-            return "Password must contain at least one number";
-        }
-        return null;
-    }
-
     const validateEmail = (val: string) => {
         if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(val)) {
-            return "Please enter a valid email address";
+            return "Enter a valid email address";
         }
         return null;
-    }
+    };
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError(null);
+
         const formData = new FormData(e.currentTarget);
-        const email = formData.get("email")?.toString() || "";
-        const password = formData.get("password")?.toString() || "";
+        const email = String(formData.get("email") || "");
+        const password = String(formData.get("password") || "");
+
         try {
             await login({email, password});
         } catch (err: any) {
@@ -59,21 +49,23 @@ export default function SignIn({setActiveScreen}: {
         }
     };
 
-    return (<div className='relative p-4 h-svh flex items-center justify-center'>
+    return (<div className="relative p-4 h-svh flex items-center justify-center">
         <Form validationBehavior="native" onSubmit={onSubmit}>
-            <Card className="p-8">
+            <Card className="p-8 min-w-md">
                 <CardHeader className="flex flex-col gap-3">
-                    <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-center">
+                        Sign In
+                    </CardTitle>
+
                     {error && (<Alert status="danger">
                         <Alert.Indicator/>
                         <Alert.Content>
-                            <Alert.Title>Login Error</Alert.Title>
-                            <Alert.Description>
-                                {error}
-                            </Alert.Description>
+                            <Alert.Title>Login error</Alert.Title>
+                            <Alert.Description>{error}</Alert.Description>
                         </Alert.Content>
                     </Alert>)}
                 </CardHeader>
+
                 <CardContent className="space-y-6">
                     <TextField
                         isRequired
@@ -89,6 +81,7 @@ export default function SignIn({setActiveScreen}: {
                             </InputGroup.Prefix>
                             <InputGroup.Input
                                 name="email"
+                                autoComplete="email"
                                 placeholder="john@example.com"
                             />
                         </InputGroup>
@@ -101,7 +94,6 @@ export default function SignIn({setActiveScreen}: {
                         name="password"
                         type="password"
                         autoComplete="current-password"
-                        validate={validatePassword}
                     >
                         <Label>Password</Label>
                         <InputGroup>
@@ -110,23 +102,23 @@ export default function SignIn({setActiveScreen}: {
                             </InputGroup.Prefix>
                             <InputGroup.Input
                                 name="password"
-                                placeholder="Enter your password"
                                 type="password"
+                                autoComplete="current-password"
+                                placeholder="Enter your password"
                             />
                         </InputGroup>
-                        <Description>Must be at least 6 characters with 1 uppercase and 1 number</Description>
                         <FieldError/>
                     </TextField>
                 </CardContent>
+
                 <CardFooter className="flex flex-col mt-4 gap-2">
                     <Button type="submit" variant="primary" className="w-full">
                         <Icon icon="gravity-ui:check"/>
                         Sign In
                     </Button>
-                    <Link className='text-right' onClick={() => {
-                        setActiveScreen('SignUp')
-                    }}>
-                        Dont have an account? Create one
+
+                    <Link onClick={() => setActiveScreen("SignUp")}>
+                        Don’t have an account? Create one
                         <LinkIcon/>
                     </Link>
                 </CardFooter>
