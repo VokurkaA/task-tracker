@@ -2,7 +2,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {api} from '../lib/api';
 import {Priority, type Task} from '../types';
 
-    export const useTasks = () => {
+export const useTasks = () => {
     return useQuery({
         queryKey: ['tasks'], queryFn: async () => {
             const {data} = await api.get<Task[]>('/tasks');
@@ -14,7 +14,9 @@ import {Priority, type Task} from '../types';
 export const useCreateTask = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (newTask: { title: string; priority?: Priority }) => {
+        mutationFn: async (newTask: {
+            title: string; description?: string; category: string; priority?: Priority; subtasks?: string[]; // Added
+        }) => {
             const {data} = await api.post<Task>('/tasks', newTask);
             return data;
         }, onSuccess: () => {
@@ -52,6 +54,18 @@ export const useShareTask = () => {
         mutationFn: async ({taskId, email, role}: { taskId: string; email: string; role: string }) => {
             const {data} = await api.post(`/tasks/${taskId}/share`, {email, role});
             return data;
+        },
+    });
+};
+
+export const useRespondToInvite = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({taskId, accept}: { taskId: string; accept: boolean }) => {
+            const {data} = await api.post(`/tasks/${taskId}/invite`, {accept});
+            return data;
+        }, onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ['tasks']});
         },
     });
 };

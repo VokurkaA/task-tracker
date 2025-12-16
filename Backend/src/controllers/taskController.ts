@@ -2,7 +2,7 @@ import {Response} from 'express';
 import {v4 as uuidv4} from 'uuid';
 import {redis} from '../config/redis.js';
 import {AuthRequest} from '../middleware/auth.js';
-import {Priority, Role, Task, User} from '../types/index.js';
+import {Priority, Role, ShareStatus, Task, User} from '../types/index.js';
 import {logActivity} from '../services/streamService.js';
 
 const NOTIFY_CHANNEL = 'channel:updates';
@@ -12,20 +12,26 @@ const notifyUsers = async (userIds: string[], type: string, payload: any) => {
 };
 
 export const createTask = async (req: AuthRequest, res: Response) => {
-    const {title, description, priority} = req.body;
+    const {title, description, priority, category, subtasks} = req.body; // Added subtasks
     const userId = req.user!.id;
     const taskId = `task:${uuidv4()}`;
+
+    // Process initial subtasks if provided (array of strings)
+    const initialSubtasks = Array.isArray(subtasks) ? subtasks.map((stTitle: string) => ({
+        id: uuidv4(), title: stTitle, isComplete: false
+    })) : [];
 
     const task: Task = {
         id: taskId,
         ownerId: userId,
         title,
         description: description || '',
+        category: category || 'General',
         priority: priority || Priority.MEDIUM,
-        status: 'pending',
+        isCompleted: false,
         createdAt: Date.now(),
         sharedWith: [],
-        subtasks: []
+        subtasks: initialSubtasks
     };
 
     await redis.call('JSON.SET', taskId, '$', JSON.stringify(task));
@@ -34,6 +40,10 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     await logActivity(userId, 'CREATE_TASK', {taskId, title});
     res.status(201).json(task);
 };
+
+// ... (getTasks, updateTask, addSubtask, etc. remain the same)
+// Note: updateTask works for toggling subtasks because passing the full modified subtasks array
+// to JSON.MERGE replaces the existing array.
 
 export const getTasks = async (req: AuthRequest, res: Response) => {
     const escapedUserId = req.user!.id.replace(/[:\-]/g, '\\$&')
@@ -59,11 +69,12 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     const task: Task = JSON.parse(taskData);
 
     const isOwner = task.ownerId === userId;
-    const isEditor = task.sharedWith.some(u => u.userId === userId && u.role === Role.EDITOR);
+    const sharedUser = task.sharedWith.find(u => u.userId === userId);
+    const isEditor = sharedUser?.role === Role.EDITOR && sharedUser?.status === ShareStatus.ACCEPTED;
 
     if (!isOwner && !isEditor) return res.status(403).json({error: 'Forbidden'});
 
-    if (updates.status === 'completed' && task.status !== 'completed') {
+    if (updates.isCompleted === true && !task.isCompleted) {
         await redis.call('JSON.NUMINCRBY', userId, '$.xp', 10);
     }
 
@@ -79,15 +90,12 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
 export const addSubtask = async (req: AuthRequest, res: Response) => {
     const {id} = req.params;
     const {title} = req.body;
-    const userId = req.user!.id;
 
     const subtask = {id: uuidv4(), title, isComplete: false};
-
     await redis.call('JSON.ARRAPPEND', id, '$.subtasks', JSON.stringify(subtask));
 
     const taskData = await redis.call('JSON.GET', id) as string;
     const task: Task = JSON.parse(taskData);
-
     const recipients = [task.ownerId, ...task.sharedWith.map(u => u.userId)];
     await notifyUsers(recipients, 'SUBTASK_ADDED', {taskId: id, subtask});
 
@@ -96,15 +104,41 @@ export const addSubtask = async (req: AuthRequest, res: Response) => {
 
 export const shareTask = async (req: AuthRequest, res: Response) => {
     const {id} = req.params;
-    const {email, role} = req.body; // Role: 'viewer' | 'editor'
+    const {email, role} = req.body;
     const userId = req.user!.id;
 
     const userSearch: any = await redis.call('FT.SEARCH', 'idx:users', `@email:{${email.replace(/@/g, '\\@')}}`);
     if (userSearch[0] === 0) return res.status(404).json({error: 'User not found'});
     const targetUser = JSON.parse(userSearch[2][1]) as User;
 
-    const shareObj = {userId: targetUser.id, role};
+    if (targetUser.id === userId) return res.status(400).json({error: 'Cannot share with yourself'});
+
+    const shareObj = {userId: targetUser.id, role, status: ShareStatus.PENDING};
     await redis.call('JSON.ARRAPPEND', id, '$.sharedWith', JSON.stringify(shareObj));
 
-    res.json({message: `Shared with ${targetUser.username}`});
+    await notifyUsers([targetUser.id], 'TASK_SHARED', {taskId: id, invitedBy: req.user!.id});
+    res.json({message: `Invite sent to ${targetUser.username}`});
+};
+
+export const respondToInvite = async (req: AuthRequest, res: Response) => {
+    const {id} = req.params;
+    const {accept} = req.body;
+    const userId = req.user!.id;
+
+    const taskData = await redis.call('JSON.GET', id) as string;
+    if (!taskData) return res.status(404).json({error: 'Task not found'});
+    const task: Task = JSON.parse(taskData);
+
+    const userIndex = task.sharedWith.findIndex(u => u.userId === userId);
+    if (userIndex === -1) return res.status(404).json({error: 'Invite not found'});
+
+    if (accept) {
+        await redis.call('JSON.SET', id, `$.sharedWith[${userIndex}].status`, `"${ShareStatus.ACCEPTED}"`);
+        await logActivity(userId, 'INVITE_ACCEPTED', {taskId: id});
+    } else {
+        await redis.call('JSON.ARRPOP', id, `$.sharedWith`, userIndex);
+        await logActivity(userId, 'INVITE_REJECTED', {taskId: id});
+    }
+
+    res.json({success: true});
 };

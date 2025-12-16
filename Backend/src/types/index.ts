@@ -11,6 +11,11 @@ export enum Role {
   VIEWER = 'viewer'
 }
 
+export enum ShareStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted'
+}
+
 export interface Subtask {
   id: string;
   title: string;
@@ -20,6 +25,7 @@ export interface Subtask {
 export interface SharedUser {
   userId: string;
   role: Role;
+  status: ShareStatus;
 }
 
 export interface Task {
@@ -27,8 +33,9 @@ export interface Task {
   ownerId: string;
   title: string;
   description?: string;
+  category: string;
   priority: Priority;
-  status: 'pending' | 'completed';
+  isCompleted: boolean;
   createdAt: number;
   sharedWith: SharedUser[];
   subtasks: Subtask[];

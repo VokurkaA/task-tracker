@@ -27,6 +27,7 @@ app.post('/tasks', requireAuth, Task.createTask);
 app.put('/tasks/:id', requireAuth, Task.updateTask);
 app.post('/tasks/:id/subtasks', requireAuth, Task.addSubtask);
 app.post('/tasks/:id/share', requireAuth, Task.shareTask);
+app.post('/tasks/:id/invite', requireAuth, Task.respondToInvite);
 
 const PORT = process.env.PORT || 4000;
 
