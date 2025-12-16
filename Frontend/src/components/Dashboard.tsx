@@ -1,50 +1,17 @@
-import {useTasks} from "../hooks/useTasks.ts";
-import {
-    Alert,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Checkbox,
-    CheckboxContent,
-    CheckboxControl,
-    CheckboxGroup,
-    CheckboxIndicator,
-    Label
-} from "@heroui/react";
-import NewTaskModal from "./NewTaskModal.tsx";
+import {Avatar, AvatarFallback, Header} from "@heroui/react";
+import {useAuth} from "../hooks/useAuth.ts";
+import {ThemeToggle} from "./ThemeToggloe.tsx";
+import TaskList from "./TaskList.tsx";
 
 export default function Dashboard() {
-    // const {user} = useAuth();
-    const tasks = useTasks()
-    console.log(tasks.data)
-    return (<div className="relative flex items-center justify-center w-svw h-svh select-none">
-        <Card className="min-w-lg">
-            <CardHeader className='flex flex-row justify-between'>
-                <CardTitle>Tasks</CardTitle>
-                <NewTaskModal/>
-            </CardHeader>
-            <CardContent>
-                <CheckboxGroup name="takss">
-                    {/*<Label>Tasks</Label>*/}
-                    {(tasks.data && tasks.data.length > 0) ? tasks.data.map((t) => (<Checkbox>
-                        <CheckboxControl>
-                            <CheckboxIndicator/>
-                        </CheckboxControl>
-                        <CheckboxContent>
-                            <Label>{t.title}</Label>
-                        </CheckboxContent>
-                    </Checkbox>)) : (<Alert status="accent">
-                        <Alert.Indicator/>
-                        <Alert.Content>
-                            <Alert.Title>No tasks</Alert.Title>
-                            <Alert.Description>
-                                No tasks available. Create new, or share with others.
-                            </Alert.Description>
-                        </Alert.Content>
-                    </Alert>)}
-                </CheckboxGroup>
-            </CardContent>
-        </Card>
+    const {user} = useAuth();
+    return (<div className="relative flex justify-center w-svw h-svh select-none">
+        <Header className='fixed flex bg-background z-50 h-24 flex-row items-center justify-around top-0 p-4'>
+            <Avatar>
+                <AvatarFallback>{user?.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <ThemeToggle/>
+        </Header>
+        <TaskList/>
     </div>)
 }

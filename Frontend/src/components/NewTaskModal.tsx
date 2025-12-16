@@ -1,14 +1,7 @@
 "use client";
 
+import * as React from "react";
 import {
-    AlertDialog,
-    AlertDialogBody,
-    AlertDialogContainer,
-    AlertDialogDialog,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogHeading,
-    AlertDialogIcon,
     Button,
     FieldError,
     Form,
@@ -30,42 +23,69 @@ import {
     SelectPopover,
     SelectTrigger,
     SelectValue,
-    TextField
+    Spinner,
+    TextField,
 } from "@heroui/react";
 import {Icon} from "@iconify/react";
-import {Priority} from "../types.ts";
+import {Priority} from "../types";
+import {useCreateTask} from "../hooks/useTasks";
 
 export default function NewTaskModal() {
+    const {mutate, isPending, error} = useCreateTask();
+
+    const onSubmit = (e: React.FormEvent<HTMLFormElement>, close: () => void) => {
+        e.preventDefault();
+
+        const data = Object.fromEntries(new FormData(e.currentTarget)) as {
+            title: string; description?: string; priority?: Priority;
+        };
+
+        mutate({
+            title: data.title, priority: data.priority,
+        }, {
+            onSuccess: () => close(),
+        });
+    };
+
     return (<Modal>
-        <Button variant="secondary">
+        <Button className="" variant="secondary">
             <Icon icon="gravity-ui:plus"/>
             New task
         </Button>
+
         <ModalContainer>
             <ModalDialog>
                 {({close}) => (<>
                     <ModalCloseTrigger/>
+
                     <ModalHeader>
                         <ModalHeading>Create a new task</ModalHeading>
                     </ModalHeader>
-                    <ModalBody className='min-w-lg'>
-                        <Form className='space-y-6'>
+
+                    <Form onSubmit={(e) => onSubmit(e, close)}>
+                        <ModalBody className="min-w-lg space-y-6">
                             <TextField isRequired>
                                 <Label>Title</Label>
-                                <Input placeholder="eg. Homework - biology"/>
+                                <Input
+                                    name="title"
+                                    placeholder="eg. Homework - biology"
+                                />
                                 <FieldError/>
                             </TextField>
+
                             <TextField>
                                 <Label>Description</Label>
-                                <Input placeholder=""/>
+                                <Input name="description"/>
                                 <FieldError/>
                             </TextField>
-                            <Select placeholder="Select priority">
+
+                            <Select name="priority" placeholder="Select priority">
                                 <Label>Priority</Label>
                                 <SelectTrigger>
                                     <SelectValue/>
                                     <SelectIndicator/>
                                 </SelectTrigger>
+
                                 <SelectPopover>
                                     <ListBox>
                                         {Object.values(Priority).map((p) => (<ListBoxItem key={p} id={p} textValue={p}>
@@ -75,36 +95,30 @@ export default function NewTaskModal() {
                                     </ListBox>
                                 </SelectPopover>
                             </Select>
-                        </Form>
-                    </ModalBody>
-                    <ModalFooter>
-                        <AlertDialog>
-                            <Button variant="danger">Discard</Button>
-                            <AlertDialogContainer>
-                                <AlertDialogDialog>
-                                    {({close}) => (<>
-                                        <AlertDialogHeader>
-                                            <AlertDialogIcon status="danger"/>
-                                            <AlertDialogHeading>Discard this task?</AlertDialogHeading>
-                                        </AlertDialogHeader>
-                                        <AlertDialogBody>
-                                            <p>Are you sure you want to discard this task?</p>
-                                            <p>This action cannot be undone.</p>
-                                        </AlertDialogBody>
-                                        <AlertDialogFooter>
-                                            <Button variant="tertiary" onPress={close}>
-                                                Cancel
-                                            </Button>
-                                            <Button variant="danger" onPress={close}>
-                                                Discard task
-                                            </Button>
-                                        </AlertDialogFooter>
-                                    </>)}
-                                </AlertDialogDialog>
-                            </AlertDialogContainer>
-                        </AlertDialog>
-                        <Button variant="primary" onPress={close}>Create</Button>
-                    </ModalFooter>
+
+                            {error && (<p className="text-danger text-sm">
+                                Failed to create task
+                            </p>)}
+                        </ModalBody>
+
+                        <ModalFooter>
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                isPending={isPending}
+                                isDisabled={isPending}
+                            >
+                                {({isPending}) => (<>
+                                    {isPending && (<Spinner
+                                        color="current"
+                                        size="sm"
+                                        className="mr-2"
+                                    />)}
+                                    Create
+                                </>)}
+                            </Button>
+                        </ModalFooter>
+                    </Form>
                 </>)}
             </ModalDialog>
         </ModalContainer>
