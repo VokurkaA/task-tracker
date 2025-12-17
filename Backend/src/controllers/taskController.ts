@@ -142,3 +142,25 @@ export const respondToInvite = async (req: AuthRequest, res: Response) => {
 
     res.json({success: true});
 };
+
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+    const {id} = req.params;
+    const userId = req.user!.id;
+
+    const taskData = await redis.call('JSON.GET', id) as string;
+    if (!taskData) return res.status(404).json({error: 'Task not found'});
+
+    const task: Task = JSON.parse(taskData);
+
+    if (task.ownerId !== userId) {
+        return res.status(403).json({error: 'Forbidden: Only the owner can delete this task'});
+    }
+
+    await redis.del(id);
+
+    const recipients = [task.ownerId, ...task.sharedWith.map(u => u.userId)];
+    await notifyUsers(recipients, 'TASK_DELETED', {taskId: id});
+    await logActivity(userId, 'DELETE_TASK', {taskId: id, title: task.title});
+
+    res.json({success: true, message: 'Task deleted successfully'});
+};

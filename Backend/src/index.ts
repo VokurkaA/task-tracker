@@ -25,6 +25,7 @@ app.get('/auth/me', requireAuth, Auth.me);
 app.get('/tasks', requireAuth, Task.getTasks);
 app.post('/tasks', requireAuth, Task.createTask);
 app.put('/tasks/:id', requireAuth, Task.updateTask);
+app.delete('/tasks/:id', requireAuth, Task.deleteTask);
 app.post('/tasks/:id/subtasks', requireAuth, Task.addSubtask);
 app.post('/tasks/:id/share', requireAuth, Task.shareTask);
 app.post('/tasks/:id/invite', requireAuth, Task.respondToInvite);

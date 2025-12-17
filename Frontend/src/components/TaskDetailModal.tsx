@@ -13,6 +13,7 @@ import {
     ModalCloseTrigger,
     ModalContainer,
     ModalDialog,
+    ModalFooter,
     ModalHeader,
 } from "@heroui/react";
 import {useAddSubtask, useUpdateTask} from "../hooks/useTasks";
@@ -103,6 +104,10 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                         </div>
                     </div>
                 </ModalBody>
+                <ModalFooter className="flex justify-between">
+                    <Button variant="danger">Delete</Button>
+                    <Button variant="primary">Mark complete</Button>
+                </ModalFooter>
             </ModalDialog>
         </ModalContainer>
     </Modal>);
