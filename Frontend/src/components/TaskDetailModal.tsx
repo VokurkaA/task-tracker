@@ -3,11 +3,11 @@
 import {
     Button,
     Checkbox,
-    CheckboxContent,
     CheckboxControl,
     CheckboxIndicator,
     Chip,
     Input,
+    InputGroup,
     Modal,
     ModalBody,
     ModalCloseTrigger,
@@ -15,11 +15,14 @@ import {
     ModalDialog,
     ModalFooter,
     ModalHeader,
+    Separator,
+    Surface
 } from "@heroui/react";
 import {useAddSubtask, useDeleteTask, useShareTask, useUpdateTask} from "../hooks/useTasks";
 import {useMemo, useState} from "react";
 import {Priority, type Task} from "../types.ts";
-import {toast} from "sonner"; 
+import {toast} from "sonner";
+import {Icon} from "@iconify/react";
 
 interface TaskDetailModalProps {
     task: Task;
@@ -29,8 +32,8 @@ interface TaskDetailModalProps {
 
 export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModalProps) {
     const {mutate: updateTask} = useUpdateTask();
-    const {mutate: addSubtask} = useAddSubtask();
-    const {mutate: deleteTask} = useDeleteTask();
+    const {mutate: addSubtask, isPending: isAddingSubtask} = useAddSubtask();
+    const {mutate: deleteTask, isPending: isDeleting} = useDeleteTask();
     const {mutate: shareTask, isPending: isSharing} = useShareTask();
 
     const [newSubtask, setNewSubtask] = useState("");
@@ -54,7 +57,6 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     const handleSubtaskToggle = (subtaskId: string, isComplete: boolean) => {
         const updatedSubtasks = task.subtasks.map(st => st.id === subtaskId ? {...st, isComplete} : st);
         updateTask({id: task.id, updates: {subtasks: updatedSubtasks}});
-        // No toast here to keep UI snappy and less noisy
     };
 
     const handleShare = () => {
@@ -63,9 +65,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
             onSuccess: () => {
                 toast.success(`Invite sent to ${shareEmail}`);
                 setShareEmail("");
-            }, onError: () => {
-                toast.error("Failed to send invite");
-            }
+            }, onError: () => toast.error("Failed to send invite")
         });
     };
 
@@ -74,9 +74,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
             onSuccess: () => {
                 toast.success("Task deleted");
                 onClose();
-            }, onError: () => {
-                toast.error("Failed to delete task");
-            }
+            }, onError: () => toast.error("Failed to delete task")
         });
     };
 
@@ -84,101 +82,112 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
         if (!newSubtask.trim()) return;
         addSubtask({taskId: task.id, title: newSubtask.trim()}, {
             onSuccess: () => {
-                toast.success("Subtask added");
                 setNewSubtask("");
-            }, onError: () => {
-                toast.error("Failed to add subtask");
-            }
-        });
-    };
-
-    const handleToggleComplete = () => {
-        const newStatus = !task.isCompleted;
-        updateTask({id: task.id, updates: {isCompleted: newStatus}}, {
-            onSuccess: () => {
-                toast.success(newStatus ? "Task completed!" : "Task marked as active");
-                if (newStatus) onClose(); // Optional: close modal on completion
-            }
+            }, onError: () => toast.error("Failed to add subtask")
         });
     };
 
     return (<Modal isOpen={isOpen} onOpenChange={onClose}>
-        <ModalContainer className="w-md select-none">
-            <ModalDialog>
+        <ModalContainer>
+            <ModalDialog className="sm:max-w-xl">
                 <ModalCloseTrigger/>
-                <ModalHeader>
-                    <h2>{task.title}</h2>
-                    <div className="flex justify-between">
-                        {task.category && <Chip variant="secondary">{task.category}</Chip>}
-                        <Chip variant="primary" color={priorityChipColor}>{task.priority}</Chip>
+                <ModalHeader className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between pr-8">
+                        <h2 className="text-xl font-bold truncate">{task.title}</h2>
+                    </div>
+                    <div className="flex gap-2">
+                        <Chip variant="tertiary" color={priorityChipColor} size="sm" className="capitalize">
+                            {task.priority} Priority
+                        </Chip>
+                        {task.category && <Chip variant="tertiary" color="default" size="sm">{task.category}</Chip>}
                     </div>
                 </ModalHeader>
+
                 <ModalBody className="space-y-6">
-                    {task.description && (<div>{task.description}</div>)}
+                    {task.description && (<Surface className="p-3 bg-default-50 rounded-lg text-sm text-default-600">
+                        {task.description}
+                    </Surface>)}
 
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-semibold uppercase text-default-400">Subtasks</h3>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
+                            <Icon icon="gravity-ui:list-check"/>
+                            <span>Subtasks</span>
+                        </div>
 
-                        <div className="space-y-2">
-                            {task.subtasks.map((st) => (<div key={st.id} className="flex items-center gap-3">
+                        <div className="flex flex-col gap-2">
+                            {task.subtasks.map((st) => (<div key={st.id}
+                                                             className="group flex items-center gap-3 p-2 hover:bg-default-100 rounded-md transition-colors">
                                 <Checkbox
                                     isSelected={st.isComplete}
                                     onChange={() => handleSubtaskToggle(st.id, !st.isComplete)}
                                 >
-                                    <CheckboxControl>
-                                        <CheckboxIndicator/>
-                                    </CheckboxControl>
-                                    <CheckboxContent>
-                                                <span className={st.isComplete ? "line-through text-default-400" : ""}>
-                                                    {st.title}
-                                                </span>
-                                    </CheckboxContent>
+                                    <CheckboxControl><CheckboxIndicator/></CheckboxControl>
                                 </Checkbox>
+                                <span
+                                    className={`text-sm flex-1 ${st.isComplete ? "line-through text-default-400" : ""}`}>
+                                            {st.title}
+                                        </span>
                             </div>))}
                         </div>
 
-                        <div className="flex gap-2 mt-4">
+                        <InputGroup>
                             <Input
-                                className="flex-1"
                                 placeholder="Add new subtask..."
                                 value={newSubtask}
                                 onChange={(e) => setNewSubtask(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
                             />
-                            <Button variant="secondary" onPress={handleAddSubtask}>Add</Button>
-                        </div>
-                    </div>
-                    <div className="space-y-2 border-t pt-4">
-                        <h3 className="text-sm font-semibold uppercase text-default-400">Share Task</h3>
-                        <div className="flex gap-2">
-                            <Input
-                                placeholder="user@example.com"
-                                value={shareEmail}
-                                onChange={(e) => setShareEmail(e.target.value)}
-                            />
-                            <Button
-                                variant="secondary"
-                                onPress={handleShare}
-                                isDisabled={isSharing}
-                            >
-                                {isSharing ? "Sending..." : "Invite"}
+                            <Button variant="secondary" onPress={handleAddSubtask} isDisabled={isAddingSubtask}>
+                                Add
                             </Button>
+                        </InputGroup>
+                    </div>
+
+                    <Separator/>
+
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
+                            <Icon icon="gravity-ui:persons"/>
+                            <span>Collaborators</span>
                         </div>
 
-                        {task.sharedWith && task.sharedWith.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">
-                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm">
-                                User {user.userId.slice(0, 5)}... ({user.status})
+                        <InputGroup>
+                            <InputGroup.Prefix>
+                                <Icon icon="gravity-ui:envelope" className="text-default-400"/>
+                            </InputGroup.Prefix>
+                            <Input
+                                placeholder="Invite via email..."
+                                value={shareEmail}
+                                onChange={(e) => setShareEmail(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleShare()}
+                            />
+                            <Button variant="primary" onPress={handleShare} isPending={isSharing}
+                                    isDisabled={isSharing}>
+                                Invite
+                            </Button>
+                        </InputGroup>
+
+                        {task.sharedWith?.length > 0 && (<div className="flex flex-wrap gap-2">
+                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="tertiary" size="sm">
+                                <Icon icon="gravity-ui:person"/>
+                                User {user.userId.slice(0, 4)} ({user.status})
                             </Chip>))}
                         </div>)}
                     </div>
                 </ModalBody>
-                <ModalFooter className="flex justify-between">
-                    <Button variant="danger" onPress={handleDelete}>Delete</Button>
+
+                <ModalFooter className="flex justify-between gap-4">
+                    <Button variant="danger" onPress={handleDelete} isPending={isDeleting}>
+                        Delete Task
+                    </Button>
                     <Button
-                        variant={task.isCompleted ? "secondary" : "primary"}
-                        onPress={handleToggleComplete}
+                        className="w-full sm:w-auto"
+                        variant={task.isCompleted ? "tertiary" : "primary"}
+                        onPress={() => updateTask({
+                            id: task.id, updates: {isCompleted: !task.isCompleted}
+                        }, {onSuccess: onClose})}
                     >
-                        {task.isCompleted ? "Mark incomplete" : "Mark complete"}
+                        {task.isCompleted ? "Mark Incomplete" : "Mark Complete"}
                     </Button>
                 </ModalFooter>
             </ModalDialog>

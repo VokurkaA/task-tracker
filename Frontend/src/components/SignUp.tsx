@@ -12,148 +12,116 @@ import {
     InputGroup,
     Label,
     Link,
-    LinkIcon,
-    TextField,
+    Separator,
+    TextField
 } from "@heroui/react";
 import {Icon} from "@iconify/react";
 import * as React from "react";
 import {type SetStateAction, useState} from "react";
 import {useAuth} from "../hooks/useAuth";
 
-export default function SignUp({
-                                   setActiveScreen,
-                               }: {
+export default function SignUp({setActiveScreen}: {
     setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void;
 }) {
     const {signup} = useAuth();
     const [error, setError] = useState<string | null>(null);
-
-    const validateUsername = (val: string) => val.trim() ? null : "Username is required";
-
-    const validateEmail = (val: string) => {
-        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(val)) {
-            return "Enter a valid email address";
-        }
-        return null;
-    };
+    const [isLoading, setIsLoading] = useState(false);
 
     const validatePassword = (val: string) => {
-        if (val.length < 6) return "Password must be at least 6 characters";
-        if (!/[A-Z]/.test(val)) return "Must contain one uppercase letter";
-        if (!/[0-9]/.test(val)) return "Must contain one number";
+        if (val.length < 6) return "Min 6 chars";
+        if (!/[A-Z]/.test(val)) return "Needs uppercase";
+        if (!/[0-9]/.test(val)) return "Needs number";
         return null;
     };
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError(null);
+        setIsLoading(true);
 
         const formData = new FormData(e.currentTarget);
-        const username = String(formData.get("username") || "");
-        const email = String(formData.get("email") || "");
-        const password = String(formData.get("password") || "");
-
         try {
-            await signup({username, email, password});
+            await signup({
+                username: String(formData.get("username")),
+                email: String(formData.get("email")),
+                password: String(formData.get("password"))
+            });
         } catch (err: any) {
             setError(err?.response?.data?.error || "Sign up failed");
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    return (<div className="relative p-4 h-svh flex items-center justify-center">
-        <Form validationBehavior="native" onSubmit={onSubmit}>
-            <Card className="p-8 min-w-md">
-                <CardHeader className="flex flex-col gap-3">
-                    <CardTitle className="text-2xl font-bold text-center">
-                        Sign Up
-                    </CardTitle>
+    return (<div className="h-svh w-full flex items-center justify-center bg-default-50 p-4">
+        <Card className="w-full max-w-md shadow-xl p-6">
+            <CardHeader className="text-center pb-2">
+                <div
+                    className="mx-auto bg-success/10 w-12 h-12 rounded-full flex items-center justify-center mb-4 text-success">
+                    <Icon icon="gravity-ui:person-plus" className="text-2xl"/>
+                </div>
+                <CardTitle className="text-2xl">Create Account</CardTitle>
+                <Description>Join us to start tracking your tasks</Description>
+            </CardHeader>
 
+            <Form validationBehavior="native" onSubmit={onSubmit}>
+                <CardContent className="space-y-4">
                     {error && (<Alert status="danger">
-                        <Alert.Indicator/>
-                        <Alert.Content>
-                            <Alert.Title>Sign up error</Alert.Title>
-                            <Alert.Description>{error}</Alert.Description>
-                        </Alert.Content>
+                        <Icon icon="gravity-ui:circle-exclamation-fill" className="text-danger"/>
+                        <span className="ml-2 text-sm font-medium">{error}</span>
                     </Alert>)}
-                </CardHeader>
 
-                <CardContent className="space-y-6">
-                    <TextField
-                        isRequired
-                        name="username"
-                        type="text"
-                        validate={validateUsername}
-                    >
+                    <TextField isRequired name="username">
                         <Label>Username</Label>
                         <InputGroup>
-                            <InputGroup.Prefix>
-                                <Icon icon="gravity-ui:person" className="text-default-500"/>
-                            </InputGroup.Prefix>
-                            <InputGroup.Input
-                                name="username"
-                                autoComplete="username"
-                                placeholder="Enter your username"
-                            />
+                            <InputGroup.Prefix><Icon icon="gravity-ui:person"/></InputGroup.Prefix>
+                            <InputGroup.Input placeholder="johndoe"/>
                         </InputGroup>
                         <FieldError/>
                     </TextField>
 
-                    <TextField
-                        isRequired
-                        name="email"
-                        type="email"
-                        validate={validateEmail}
-                    >
+                    <TextField isRequired name="email" type="email">
                         <Label>Email</Label>
                         <InputGroup>
-                            <InputGroup.Prefix>
-                                <Icon icon="gravity-ui:envelope" className="text-default-500"/>
-                            </InputGroup.Prefix>
-                            <InputGroup.Input
-                                name="email"
-                                autoComplete="email"
-                                placeholder="john@example.com"
-                            />
+                            <InputGroup.Prefix><Icon icon="gravity-ui:envelope"/></InputGroup.Prefix>
+                            <InputGroup.Input placeholder="john@example.com"/>
                         </InputGroup>
                         <FieldError/>
                     </TextField>
 
-                    <TextField
-                        isRequired
-                        minLength={6}
-                        validate={validatePassword}
-                    >
+                    <TextField isRequired name="password" type="password" validate={validatePassword}>
                         <Label>Password</Label>
                         <InputGroup>
-                            <InputGroup.Prefix>
-                                <Icon icon="gravity-ui:lock" className="text-default-500"/>
-                            </InputGroup.Prefix>
-                            <InputGroup.Input
-                                name="password"
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder="Create a password"
-                            />
+                            <InputGroup.Prefix><Icon icon="gravity-ui:lock"/></InputGroup.Prefix>
+                            <InputGroup.Input placeholder="Create a strong password"/>
                         </InputGroup>
-                        <Description>
-                            At least 6 characters, 1 uppercase letter, 1 number
+                        <Description className="text-xs">
+                            Must contain 1 uppercase, 1 number, and 6+ characters.
                         </Description>
                         <FieldError/>
                     </TextField>
                 </CardContent>
 
-                <CardFooter className="flex flex-col mt-4 gap-2">
-                    <Button type="submit" variant="primary" className="w-full">
-                        <Icon icon="gravity-ui:check"/>
-                        Sign Up
+                <CardFooter className="flex flex-col gap-4 pt-2">
+                    <Button type="submit" variant="primary" className="w-full" isPending={isLoading}>
+                        Get Started
                     </Button>
 
-                    <Link onClick={() => setActiveScreen("SignIn")}>
-                        Already have an account? Sign in
-                        <LinkIcon/>
-                    </Link>
+                    <div className="flex items-center gap-2 w-full">
+                        <Separator className="flex-1"/>
+                        <span className="text-xs text-default-400">OR</span>
+                        <Separator className="flex-1"/>
+                    </div>
+
+                    <div className="text-center text-sm text-default-500">
+                        Already have an account?{" "}
+                        <Link onPress={() => setActiveScreen("SignIn")}
+                              className="cursor-pointer font-semibold text-primary">
+                            Sign in
+                        </Link>
+                    </div>
                 </CardFooter>
-            </Card>
-        </Form>
+            </Form>
+        </Card>
     </div>);
 }

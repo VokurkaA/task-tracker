@@ -9,10 +9,10 @@ import {
     FieldError,
     Form,
     Input,
+    InputGroup,
     Label,
     ListBox,
     ListBoxItem,
-    ListBoxItemIndicator,
     Modal,
     ModalBody,
     ModalCloseTrigger,
@@ -26,7 +26,8 @@ import {
     SelectPopover,
     SelectTrigger,
     SelectValue,
-    TextField,
+    TextArea,
+    TextField
 } from "@heroui/react";
 import {Icon} from "@iconify/react";
 import {Priority} from "../types";
@@ -36,6 +37,7 @@ export default function NewTaskModal() {
     const {mutate, isPending, error} = useCreateTask();
     const [subtasks, setSubtasks] = useState<string[]>([]);
     const [subtaskInput, setSubtaskInput] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
 
     const addSubtask = () => {
         if (!subtaskInput.trim()) return;
@@ -47,7 +49,7 @@ export default function NewTaskModal() {
         setSubtasks(subtasks.filter((_, i) => i !== index));
     };
 
-    const onSubmit = (e: React.FormEvent<HTMLFormElement>, close: () => void) => {
+    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const data = Object.fromEntries(new FormData(e.currentTarget)) as {
@@ -63,46 +65,40 @@ export default function NewTaskModal() {
         }, {
             onSuccess: () => {
                 setSubtasks([]);
-                close();
+                setIsOpen(false);
             },
         });
     };
 
-    return (<Modal>
-        <Button className="" variant="secondary">
+    return (<Modal isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button variant="secondary" onPress={() => setIsOpen(true)}>
             <Icon icon="gravity-ui:plus"/>
             New task
         </Button>
 
         <ModalContainer>
             <ModalDialog>
-                {({close}) => (<>
-                    <ModalCloseTrigger/>
+                <ModalCloseTrigger/>
+                <ModalHeader>
+                    <ModalHeading>Create a new task</ModalHeading>
+                    <Description>Fill in the details to organize your work.</Description>
+                </ModalHeader>
 
-                    <ModalHeader>
-                        <ModalHeading>Create a new task</ModalHeading>
-                    </ModalHeader>
+                <Form onSubmit={onSubmit}>
+                    <ModalBody className="space-y-4">
+                        <TextField isRequired>
+                            <Label>Title</Label>
+                            <Input name="title" placeholder="e.g. Update Documentation"/>
+                            <FieldError/>
+                        </TextField>
 
-                    <Form onSubmit={(e) => onSubmit(e, close)}>
-                        <ModalBody className="w-lg space-y-6">
-                            <TextField isRequired>
-                                <Label>Title</Label>
-                                <Input name="title" placeholder="eg. Homework - biology"/>
-                                <FieldError/>
-                            </TextField>
-
+                        <div className="grid grid-cols-2 gap-4">
                             <TextField>
                                 <Label>Category</Label>
-                                <Input name="category" placeholder="eg. Personal, Work"/>
+                                <Input name="category" placeholder="e.g. Work"/>
                             </TextField>
 
-                            <TextField>
-                                <Label>Description</Label>
-                                <Input name="description"/>
-                                <FieldError/>
-                            </TextField>
-
-                            <Select name="priority" placeholder="Select priority">
+                            <Select name="priority" defaultSelectedKey={Priority.MEDIUM}>
                                 <Label>Priority</Label>
                                 <SelectTrigger>
                                     <SelectValue/>
@@ -111,57 +107,60 @@ export default function NewTaskModal() {
                                 <SelectPopover>
                                     <ListBox>
                                         {Object.values(Priority).map((p) => (<ListBoxItem key={p} id={p} textValue={p}>
-                                            {p}
-                                            <ListBoxItemIndicator/>
+                                            <div className="flex items-center gap-2">
+                                                <Icon icon="gravity-ui:circle-fill"
+                                                      className={p === Priority.CRITICAL ? "text-danger" : p === Priority.HIGH ? "text-warning" : p === Priority.MEDIUM ? "text-primary" : "text-success"}/>
+                                                <span className="capitalize">{p}</span>
+                                            </div>
                                         </ListBoxItem>))}
                                     </ListBox>
                                 </SelectPopover>
                             </Select>
+                        </div>
 
-                            <div className="space-y-2">
+                        <TextField>
+                            <Label>Description</Label>
+                            <TextArea name="description" placeholder="Add extra details..."/>
+                        </TextField>
+
+                        <div className="space-y-2">
+                            <div className="flex flex-row items-center gap-2">
                                 <Label>Subtasks</Label>
-                                <div className="flex gap-2">
+                                <InputGroup className="flex flex-1 justify-between">
                                     <Input
                                         className="flex-1"
                                         value={subtaskInput}
                                         onChange={(e) => setSubtaskInput(e.target.value)}
                                         placeholder="Add a step..."
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                addSubtask();
-                                            }
-                                        }}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
                                     />
-                                    <Button type="button" onPress={addSubtask} variant="secondary">Add</Button>
-                                </div>
-                                <ListBox
-                                    aria-label="Subtasks"
-                                    className="space-y-1 max-h-40 overflow-y-auto"
-                                    selectionMode="none"
-                                >
-                                    {subtasks.map((st, i) => (<ListBox.Item key={i} id={String(i)} textValue={st}>
-                                        <div className="flex justify-between items-center w-full">
-                                            <div className="wrap-break-word max-w-11/12 space-x-2">
-                                                <Description>{i + 1}.</Description>
-                                                <Label className="">{st}</Label>
-                                            </div>
-                                            <CloseButton aria-label="remove" onClick={() => removeSubtask(i)}/>
-                                        </div>
-                                    </ListBox.Item>))}
-                                </ListBox>
+                                    <Button variant="secondary" onPress={addSubtask}>
+                                        <Icon icon="gravity-ui:plus"/>
+                                    </Button>
+                                </InputGroup>
                             </div>
+                            {subtasks.length > 0 && (<ListBox aria-label="Subtasks"
+                                                              className="border rounded-md p-2 max-h-40 overflow-y-auto bg-default-50">
+                                {subtasks.map((st, i) => (<ListBoxItem key={i} textValue={st}>
+                                    <div className="flex justify-between items-center w-full">
+                                        <span className="text-sm">{i + 1}. {st}</span>
+                                        <CloseButton onPress={() => removeSubtask(i)}/>
+                                    </div>
+                                </ListBoxItem>))}
+                            </ListBox>)}
+                        </div>
 
-                            {error && <p className="text-danger text-sm">Failed to create task</p>}
-                        </ModalBody>
+                        {error && <Description className="text-danger">Failed to create task. Please try
+                            again.</Description>}
+                    </ModalBody>
 
-                        <ModalFooter>
-                            <Button type="submit" variant="primary" isPending={isPending} isDisabled={isPending}>
-                                {isPending ? "Creating..." : "Create"}
-                            </Button>
-                        </ModalFooter>
-                    </Form>
-                </>)}
+                    <ModalFooter>
+                        <Button variant="ghost" onPress={() => setIsOpen(false)}>Cancel</Button>
+                        <Button type="submit" variant="primary" isPending={isPending} isDisabled={isPending}>
+                            Create Task
+                        </Button>
+                    </ModalFooter>
+                </Form>
             </ModalDialog>
         </ModalContainer>
     </Modal>);
