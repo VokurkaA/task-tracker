@@ -7,16 +7,18 @@ import {logActivity} from '../services/streamService.js';
 
 const NOTIFY_CHANNEL = 'channel:updates';
 
+const escapeTag = (str: string) => str.replace(/([^a-zA-Z0-9])/g, "\\$1");
+
 const notifyUsers = async (userIds: string[], type: string, payload: any) => {
+    if (userIds.length === 0) return;
     await redis.publish(NOTIFY_CHANNEL, JSON.stringify({userIds, type, payload}));
 };
 
 export const createTask = async (req: AuthRequest, res: Response) => {
-    const {title, description, priority, category, subtasks} = req.body; // Added subtasks
+    const {title, description, priority, category, subtasks} = req.body;
     const userId = req.user!.id;
     const taskId = `task:${uuidv4()}`;
 
-    // Process initial subtasks if provided (array of strings)
     const initialSubtasks = Array.isArray(subtasks) ? subtasks.map((stTitle: string) => ({
         id: uuidv4(), title: stTitle, isComplete: false
     })) : [];
@@ -41,12 +43,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     res.status(201).json(task);
 };
 
-// ... (getTasks, updateTask, addSubtask, etc. remain the same)
-// Note: updateTask works for toggling subtasks because passing the full modified subtasks array
-// to JSON.MERGE replaces the existing array.
-
 export const getTasks = async (req: AuthRequest, res: Response) => {
-    const escapedUserId = req.user!.id.replace(/[:\-]/g, '\\$&')
+    const escapedUserId = req.user!.id.replace(/[:\-]/g, '\\$&');
     const query = `(@ownerId:{${escapedUserId}}) | (@sharedUserId:{${escapedUserId}})`;
 
     const result: any = await redis.call('FT.SEARCH', 'idx:tasks', query, 'LIMIT', '0', '100');
@@ -107,13 +105,27 @@ export const shareTask = async (req: AuthRequest, res: Response) => {
     const {email, role} = req.body;
     const userId = req.user!.id;
 
-    const userSearch: any = await redis.call('FT.SEARCH', 'idx:users', `@email:{${email.replace(/@/g, '\\@')}}`);
+    if (!Object.values(Role).includes(role)) return res.status(400).json({error: 'Invalid role'});
+
+    const userSearch: any = await redis.call('FT.SEARCH', 'idx:users', `@email:{${escapeTag(email)}}`);
+
     if (userSearch[0] === 0) return res.status(404).json({error: 'User not found'});
     const targetUser = JSON.parse(userSearch[2][1]) as User;
 
     if (targetUser.id === userId) return res.status(400).json({error: 'Cannot share with yourself'});
 
-    const shareObj = {userId: targetUser.id, role, status: ShareStatus.PENDING};
+    const taskData = await redis.call('JSON.GET', id) as string;
+    if (!taskData) return res.status(404).json({error: 'Task not found'});
+    const task: Task = JSON.parse(taskData);
+
+    if (task.sharedWith.some(u => u.userId === targetUser.id)) {
+        return res.status(400).json({error: 'User already invited or sharing this task'});
+    }
+
+    const shareObj = {
+        userId: targetUser.id, email: targetUser.email, username: targetUser.username, role, status: ShareStatus.PENDING
+    };
+
     await redis.call('JSON.ARRAPPEND', id, '$.sharedWith', JSON.stringify(shareObj));
 
     await notifyUsers([targetUser.id], 'TASK_SHARED', {taskId: id, invitedBy: req.user!.id});

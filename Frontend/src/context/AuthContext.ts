@@ -6,6 +6,7 @@ export interface AuthContextType {
     user: User | null;
     token: string | null;
     socket: Socket | null;
+    isLoading: boolean;
     login: (data: LoginCredentials) => Promise<void>;
     signup: (data: SignupCredentials) => Promise<void>;
     logout: () => void;

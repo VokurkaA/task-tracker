@@ -18,6 +18,8 @@ export interface Subtask {
 
 export interface SharedUser {
     userId: string;
+    email: string;
+    username: string;
     role: Role;
     status: ShareStatus;
 }
@@ -56,9 +58,4 @@ export interface SignupCredentials {
     email: string;
     password?: string;
     username: string;
-}
-
-export interface AuthResponse {
-    token: string;
-    user: User;
 }

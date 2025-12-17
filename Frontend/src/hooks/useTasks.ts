@@ -1,13 +1,18 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {api} from '../lib/api';
 import {Priority, type Task} from '../types';
+import {useAuth} from "./useAuth.ts";
 
 export const useTasks = () => {
+    const {token} = useAuth();
     return useQuery({
         queryKey: ['tasks'], queryFn: async () => {
             const {data} = await api.get<Task[]>('/tasks');
             return data;
-        },
+        }, enabled: !!token, retry: (failureCount, error: any) => {
+            if (error.response?.status === 401) return false;
+            return failureCount < 3;
+        }
     });
 };
 

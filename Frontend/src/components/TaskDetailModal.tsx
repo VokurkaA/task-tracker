@@ -1,7 +1,8 @@
 import {Button, Checkbox, Chip, CloseButton, InputGroup, Modal, Separator, Surface} from "@heroui/react";
-import {useAddSubtask, useDeleteTask, useShareTask, useUpdateTask} from "../hooks/useTasks";
+import {useAddSubtask, useDeleteTask, useRespondToInvite, useShareTask, useUpdateTask} from "../hooks/useTasks";
+import {useAuth} from "../hooks/useAuth";
 import {useMemo, useState} from "react";
-import {Priority, type Task} from "../types";
+import {Priority, ShareStatus, type Task} from "../types";
 import {toast} from "sonner";
 import {Icon} from "@iconify/react";
 
@@ -12,13 +13,19 @@ interface TaskDetailModalProps {
 }
 
 export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModalProps) {
+    const {user: currentUser} = useAuth();
     const {mutate: updateTask} = useUpdateTask();
     const {mutate: addSubtask, isPending: isAddingSubtask} = useAddSubtask();
     const {mutate: deleteTask, isPending: isDeleting} = useDeleteTask();
     const {mutate: shareTask, isPending: isSharing} = useShareTask();
+    const {mutate: respondToInvite} = useRespondToInvite();
 
     const [newSubtask, setNewSubtask] = useState("");
     const [shareEmail, setShareEmail] = useState("");
+
+    const pendingInvite = useMemo(() => {
+        return task.sharedWith.find(u => u.userId === currentUser?.id && u.status === ShareStatus.PENDING);
+    }, [task.sharedWith, currentUser]);
 
     const priorityColor = useMemo(() => {
         switch (task.priority) {
@@ -42,11 +49,20 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
 
     const handleShare = () => {
         if (!shareEmail.trim()) return;
-        shareTask({taskId: task.id, email: shareEmail, role: 'EDITOR'}, {
+        shareTask({taskId: task.id, email: shareEmail, role: 'editor'}, {
             onSuccess: () => {
                 toast.success(`Invite sent to ${shareEmail}`);
                 setShareEmail("");
-            }, onError: () => toast.error("Failed to send invite")
+            }, onError: (err: any) => toast.error(err?.response?.data?.error || "Failed to send invite")
+        });
+    };
+
+    const handleInviteResponse = (accept: boolean) => {
+        respondToInvite({taskId: task.id, accept}, {
+            onSuccess: () => {
+                toast.success(accept ? "Invite accepted" : "Invite declined");
+                if (!accept) onClose();
+            }, onError: () => toast.error("Failed to respond to invite")
         });
     };
 
@@ -70,10 +86,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
         <Modal.Container>
             <Modal.Dialog className="sm:max-w-xl">
                 <Modal.Header className="flex flex-col gap-3 relative">
-                    <CloseButton
-                        onPress={onClose}
-                        className="absolute right-6 top-6"
-                    />
+                    <CloseButton onPress={onClose} className="absolute right-6 top-6"/>
 
                     <div className="flex items-center justify-between">
                         <Modal.Heading className="text-xl font-bold truncate">
@@ -88,6 +101,17 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                             {task.category}
                         </Chip>)}
                     </div>
+
+                    {pendingInvite && (<div
+                        className="flex items-center justify-between p-3 bg-warning-50 text-warning-900 rounded-lg border border-warning-200 mt-2">
+                        <span className="text-sm font-medium">You have been invited to edit this task.</span>
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="secondary"
+                                    onPress={() => handleInviteResponse(true)}>Accept</Button>
+                            <Button size="sm" variant="danger"
+                                    onPress={() => handleInviteResponse(false)}>Decline</Button>
+                        </div>
+                    </div>)}
                 </Modal.Header>
 
                 <Modal.Body className="space-y-6">
@@ -117,8 +141,8 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                                 </Checkbox>
                                 <span
                                     className={`text-sm flex-1 ${st.isComplete ? "line-through text-default-400" : ""}`}>
-                                            {st.title}
-                                        </span>
+                                    {st.title}
+                                </span>
                             </div>))}
                         </div>
 
@@ -152,6 +176,8 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                             </InputGroup.Prefix>
                             <InputGroup.Input
                                 placeholder="Invite via email..."
+                                type="email"
+                                autoComplete="email"
                                 value={shareEmail}
                                 onChange={(e) => setShareEmail(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleShare()}
@@ -165,9 +191,11 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                         </InputGroup>
 
                         {task.sharedWith && task.sharedWith.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">
-                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm">
+                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm"
+                                                                       color={user.status === ShareStatus.PENDING ? "warning" : "default"}>
                                 <Icon icon="gravity-ui:person" className="mr-1"/>
-                                User {user.userId.slice(0, 4)} ({user.status})
+                                {user.username || user.email || user.userId.slice(0, 4)}
+                                {user.status === ShareStatus.PENDING ? " (Pending)" : ""}
                             </Chip>))}
                         </div>)}
                     </div>
