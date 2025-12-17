@@ -1,7 +1,7 @@
 "use client";
 
 import {useMemo, useState} from "react";
-import {Alert, Button, Checkbox, CheckboxControl, CheckboxIndicator, Chip, Surface} from "@heroui/react";
+import {Alert, Button, Checkbox, Chip, ComboBox, Input, ListBox, Tabs} from "@heroui/react";
 import {useRespondToInvite, useTasks, useUpdateTask} from "../hooks/useTasks.ts";
 import {useAuth} from "../hooks/useAuth.ts";
 import NewTaskModal from "./NewTaskModal.tsx";
@@ -18,15 +18,18 @@ export default function TaskList() {
     const {user} = useAuth();
 
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-    const [filter, setFilter] = useState<FilterType>('all');
+    const [statusFilter, setStatusFilter] = useState<FilterType>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
     const selectedTask = useMemo(() => {
         return tasks?.find(t => t.id === selectedTaskId) || null;
     }, [tasks, selectedTaskId]);
 
-    const handleToggle = (id: string, currentStatus: boolean) => {
-        updateTask({id, updates: {isCompleted: !currentStatus}});
-    };
+    const categories = useMemo(() => {
+        if (!tasks) return [];
+        const unique = new Set(tasks.map(t => t.category).filter(Boolean));
+        return Array.from(unique).map(c => ({id: c, name: c}));
+    }, [tasks]);
 
     const filteredTasks = useMemo(() => {
         if (!tasks) return [];
@@ -34,130 +37,157 @@ export default function TaskList() {
             const myShare = t.sharedWith.find(u => u.userId === user?.id);
             if (myShare?.status === ShareStatus.PENDING) return true;
 
-            if (filter === 'active') return !t.isCompleted;
-            if (filter === 'completed') return t.isCompleted;
-            return true;
+            if (statusFilter === 'active' && t.isCompleted) return false;
+            if (statusFilter === 'completed' && !t.isCompleted) return false;
+
+            return !(categoryFilter && categoryFilter !== "all" && t.category !== categoryFilter);
         });
-    }, [tasks, filter, user?.id]);
+    }, [tasks, statusFilter, categoryFilter, user?.id]);
 
     const activeCount = tasks?.filter(t => !t.isCompleted).length || 0;
 
+    const handleToggle = (id: string, currentStatus: boolean) => {
+        updateTask({id, updates: {isCompleted: !currentStatus}});
+    };
+
     if (isLoading) {
-        return (<div className="flex justify-center p-10">
+        return (<div className="flex justify-center p-12">
             <Icon icon="gravity-ui:arrows-rotate-right" className="animate-spin text-3xl text-default-300"/>
         </div>);
     }
 
-    return (<Surface
-        className="min-w-full md:min-w-lg p-6 md:p-8 rounded-2xl shadow-sm border border-default-100 bg-background">
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    return (<div className="w-full">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
                 <h1 className="text-2xl font-bold">My Tasks</h1>
-                <p className="text-default-500 text-sm">You have {activeCount} active tasks</p>
+                <p className="text-default-500">You have {activeCount} active tasks</p>
             </div>
             <NewTaskModal/>
         </div>
 
-        <div className="flex p-1 bg-default-100 rounded-lg w-fit mb-6">
-            {(['all', 'active', 'completed'] as FilterType[]).map((f) => (<button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === f ? "bg-background shadow-sm text-foreground" : "text-default-500 hover:text-foreground"}`}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+            <Tabs
+                selectedKey={statusFilter}
+                onSelectionChange={(key) => setStatusFilter(key as FilterType)}
             >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>))}
+                <Tabs.ListContainer>
+                    <Tabs.List>
+                        <Tabs.Tab id="all">All <Tabs.Indicator/></Tabs.Tab>
+                        <Tabs.Tab id="active">Active <Tabs.Indicator/></Tabs.Tab>
+                        <Tabs.Tab id="completed">Completed <Tabs.Indicator/></Tabs.Tab>
+                    </Tabs.List>
+                </Tabs.ListContainer>
+            </Tabs>
+
+            <div className="w-full sm:w-64">
+                <ComboBox
+                    selectedKey={categoryFilter}
+                    onSelectionChange={(key) => setCategoryFilter(key as string)}
+                    allowsCustomValue={false}
+                >
+                    <ComboBox.InputGroup>
+                        <Input placeholder="Filter by category"/>
+                        <ComboBox.Trigger/>
+                    </ComboBox.InputGroup>
+                    <ComboBox.Popover>
+                        <ListBox>
+                            <ListBox.Item id="all">All Categories</ListBox.Item>
+                            {categories.map((cat) => (<ListBox.Item id={cat.id} key={cat.id} textValue={cat.name}>
+                                {cat.name}
+                            </ListBox.Item>))}
+                        </ListBox>
+                    </ComboBox.Popover>
+                </ComboBox>
+            </div>
         </div>
 
         {isError && <Alert status="danger" className="mb-4">Failed to load tasks.</Alert>}
 
-        <div className="space-y-3">
-            {(!tasks || tasks.length === 0) ? (<div
-                className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-default-200 rounded-xl">
-                <div className="bg-default-100 p-4 rounded-full mb-3">
-                    <Icon icon="gravity-ui:list-ul" className="text-3xl text-default-400"/>
-                </div>
-                <h3 className="text-lg font-semibold">No tasks yet</h3>
-                <p className="text-default-500 max-w-xs mt-1">
-                    Get started by creating your first task using the button above.
-                </p>
-            </div>) : filteredTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Icon icon="gravity-ui:check-circle" className="text-4xl text-default-300 mb-3"/>
-                    <p className="text-default-500">No {filter} tasks found.</p>
-                </div>) : (filteredTasks.map((t) => {
+        <div className="flex flex-col gap-2">
+            {filteredTasks.length === 0 ? (<div
+                className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center text-default-500">
+                <Icon icon="gravity-ui:list-ul" className="mb-2 text-3xl text-default-300"/>
+                <p>No tasks found</p>
+            </div>) : (filteredTasks.map((t) => {
                 const myShare = t.sharedWith.find(u => u.userId === user?.id);
                 const isPending = myShare?.status === ShareStatus.PENDING;
 
                 if (isPending) {
                     return (<div key={t.id}
-                                 className="border border-warning-200 bg-warning-50 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
+                                 className="flex items-center justify-between gap-4 rounded-md border border-warning-200 bg-warning-50 p-4">
                         <div className="flex items-center gap-3">
-                            <Icon icon="gravity-ui:envelope" className="text-warning-500 text-xl"/>
+                            <Icon icon="gravity-ui:envelope" className="text-xl text-warning-500"/>
                             <div>
-                                <p className="font-bold text-warning-900">Invited to: {t.title}</p>
+                                <p className="font-bold text-warning-900">Invitation: {t.title}</p>
                                 <p className="text-xs text-warning-700">Shared by {t.ownerId}</p>
                             </div>
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <Button size="sm"
-                                    className="flex-1 sm:flex-none bg-warning-500 text-white hover:bg-warning-600"
-                                    onPress={() => respond({taskId: t.id, accept: true})}>Accept</Button>
-                            <Button size="sm" variant="tertiary" className="flex-1 sm:flex-none"
-                                    onPress={() => respond({taskId: t.id, accept: false})}>Decline</Button>
+                        <div className="flex gap-2">
+                            <Button size="sm" onPress={() => respond({taskId: t.id, accept: true})}
+                                    className="bg-warning-500 text-white">
+                                Accept
+                            </Button>
+                            <Button size="sm" variant="tertiary"
+                                    onPress={() => respond({taskId: t.id, accept: false})}>
+                                Decline
+                            </Button>
                         </div>
                     </div>);
                 }
 
-                return (<div key={t.id}
-                             className={`group flex items-center gap-4 p-3 rounded-xl border transition-all hover:shadow-md ${t.isCompleted ? 'bg-default-50 border-default-100' : 'bg-background border-default-200'}`}>
+                return (<div
+                    key={t.id}
+                    className={`flex items-center gap-3 rounded-md border p-3 ${t.isCompleted ? 'bg-default-50' : 'bg-background'}`}
+                >
                     <Checkbox
                         isSelected={t.isCompleted}
                         onChange={() => handleToggle(t.id, t.isCompleted)}
-                        className="ml-1"
                     >
-                        <CheckboxControl>
-                            <CheckboxIndicator/>
-                        </CheckboxControl>
+                        <Checkbox.Control>
+                            <Checkbox.Indicator/>
+                        </Checkbox.Control>
                     </Checkbox>
 
                     <div
-                        className="flex-1 cursor-pointer min-w-0"
+                        className="flex-1 cursor-pointer overflow-hidden"
                         onClick={() => setSelectedTaskId(t.id)}
                     >
-                        <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-medium truncate ${t.isCompleted ? "line-through text-default-400" : "text-foreground"}`}>
+                                            className={`truncate font-medium ${t.isCompleted ? "text-default-400 line-through" : ""}`}>
                                             {t.title}
                                         </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                                {t.priority !== 'low' && !t.isCompleted && (<Chip size="sm" variant="soft"
-                                                                                  color={t.priority === 'critical' ? 'danger' : t.priority === 'high' ? 'warning' : 'default'}>
+                            <div className="flex shrink-0 gap-2">
+                                {t.priority !== 'low' && !t.isCompleted && (<Chip
+                                    size="sm"
+                                    variant="soft"
+                                    color={t.priority === 'critical' ? 'danger' : t.priority === 'high' ? 'warning' : 'default'}
+                                >
                                     {t.priority}
                                 </Chip>)}
                                 {t.category && (<span
-                                    className="text-[10px] uppercase tracking-wider font-bold text-default-400 border border-default-200 px-1.5 py-0.5 rounded">
+                                    className="rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-default-400">
                                                     {t.category}
                                                 </span>)}
                             </div>
                         </div>
 
-                        {(t.subtasks.length > 0 || t.description) && (<div className="flex items-center gap-3 mt-1">
-                            {t.subtasks.length > 0 && (<span
-                                className={`text-xs flex items-center gap-1 ${t.subtasks.every(s => s.isComplete) ? 'text-success' : 'text-default-400'}`}>
+                        {(t.subtasks.length > 0 || t.description) && (
+                            <div className="mt-1 flex items-center gap-3 text-xs text-default-400">
+                                {t.subtasks.length > 0 && (<span
+                                    className={`flex items-center gap-1 ${t.subtasks.every(s => s.isComplete) ? 'text-success' : ''}`}>
                                                     <Icon icon="gravity-ui:list-ul"/>
-                                {t.subtasks.filter(s => s.isComplete).length}/{t.subtasks.length}
+                                    {t.subtasks.filter(s => s.isComplete).length}/{t.subtasks.length}
                                                 </span>)}
-                            {t.description && (<span className="text-xs text-default-400 truncate max-w-[200px]">
-                                                    {t.description}
-                                                </span>)}
-                        </div>)}
+                                {t.description && (<span className="truncate max-w-[200px]">{t.description}</span>)}
+                            </div>)}
                     </div>
 
                     <Button
+                        isIconOnly
                         size="sm"
                         variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-default-400"
                         onPress={() => setSelectedTaskId(t.id)}
                     >
                         <Icon icon="gravity-ui:chevron-right"/>
@@ -171,5 +201,5 @@ export default function TaskList() {
             isOpen={!!selectedTask}
             onClose={() => setSelectedTaskId(null)}
         />)}
-    </Surface>);
+    </div>);
 }
