@@ -7,7 +7,6 @@ import {
     InputGroup,
     Label,
     ListBox,
-    ListBoxItem,
     Modal,
     Select,
     TextArea,
@@ -23,17 +22,14 @@ export default function NewTaskModal() {
     const {mutate, isPending} = useCreateTask();
     const [isOpen, setIsOpen] = useState(false);
 
-    // Form State
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState("");
     const [priority, setPriority] = useState<Priority>(Priority.MEDIUM);
 
-    // Subtask State
     const [subtasks, setSubtasks] = useState<string[]>([]);
     const [subtaskInput, setSubtaskInput] = useState("");
 
-    // Validation
     const getTitleError = (value: string) => {
         if (!value.trim()) return "Title is required";
         return null;
@@ -63,7 +59,6 @@ export default function NewTaskModal() {
         setSubtasks(subtasks.filter((_, i) => i !== index));
     };
 
-    // Make event optional so it can be called by Button onPress
     const handleSubmit = (e?: React.FormEvent) => {
         if (e) {
             e.preventDefault();
@@ -125,11 +120,10 @@ export default function NewTaskModal() {
                                 <Input placeholder="e.g. Work"/>
                             </TextField>
 
-                            {/* Priority Select */}
                             <Select
                                 name="priority"
-                                selectedKey={priority}
-                                onSelectionChange={(key) => setPriority(key as Priority)}
+                                value={priority}
+                                onChange={(key) => setPriority(key as Priority)}
                             >
                                 <Label>Priority</Label>
                                 <Select.Trigger>
@@ -138,7 +132,7 @@ export default function NewTaskModal() {
                                 </Select.Trigger>
                                 <Select.Popover>
                                     <ListBox>
-                                        {Object.values(Priority).map((p) => (<ListBoxItem key={p} id={p} textValue={p}>
+                                        {Object.values(Priority).map((p) => (<ListBox.Item key={p} id={p} textValue={p}>
                                             <div className="flex items-center gap-2">
                                                 <Icon
                                                     icon="gravity-ui:circle-fill"
@@ -146,13 +140,12 @@ export default function NewTaskModal() {
                                                 />
                                                 <span className="capitalize">{p}</span>
                                             </div>
-                                        </ListBoxItem>))}
+                                        </ListBox.Item>))}
                                     </ListBox>
                                 </Select.Popover>
                             </Select>
                         </div>
 
-                        {/* Description Field */}
                         <TextField
                             name="description"
                             value={description}
@@ -162,7 +155,6 @@ export default function NewTaskModal() {
                             <TextArea placeholder="Add extra details..."/>
                         </TextField>
 
-                        {/* Subtasks Section */}
                         <div className="space-y-2">
                             <TextField name="subtasks-input">
                                 <Label>Subtasks</Label>

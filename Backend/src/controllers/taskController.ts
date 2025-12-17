@@ -176,3 +176,59 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
 
     res.json({success: true, message: 'Task deleted successfully'});
 };
+
+export const updateShareRole = async (req: AuthRequest, res: Response) => {
+    const {id, userId: targetUserId} = req.params;
+    const {role} = req.body;
+    const requesterId = req.user!.id;
+
+    if (!Object.values(Role).includes(role)) {
+        return res.status(400).json({error: 'Invalid role'});
+    }
+
+    const taskData = await redis.call('JSON.GET', id) as string;
+    if (!taskData) return res.status(404).json({error: 'Task not found'});
+    const task: Task = JSON.parse(taskData);
+
+    if (task.ownerId !== requesterId) {
+        return res.status(403).json({error: 'Forbidden: Only owner can manage roles'});
+    }
+
+    const userIndex = task.sharedWith.findIndex(u => u.userId === targetUserId);
+    if (userIndex === -1) return res.status(404).json({error: 'User not found in this task'});
+
+    await redis.call('JSON.SET', id, `$.sharedWith[${userIndex}].role`, `"${role}"`);
+
+    await notifyUsers([targetUserId], 'ROLE_UPDATED', {taskId: id, newRole: role});
+    await logActivity(requesterId, 'ROLE_UPDATE', {taskId: id, targetUserId, newRole: role});
+
+    res.json({success: true, message: 'Role updated successfully'});
+};
+
+export const revokeAccess = async (req: AuthRequest, res: Response) => {
+    const {id, userId: targetUserId} = req.params;
+    const requesterId = req.user!.id;
+
+    const taskData = await redis.call('JSON.GET', id) as string;
+    if (!taskData) return res.status(404).json({error: 'Task not found'});
+    const task: Task = JSON.parse(taskData);
+
+    if (task.ownerId !== requesterId && requesterId !== targetUserId) {
+        return res.status(403).json({error: 'Forbidden'});
+    }
+
+    const userIndex = task.sharedWith.findIndex(u => u.userId === targetUserId);
+    if (userIndex === -1) return res.status(404).json({error: 'User not found in this task'});
+
+    await redis.call('JSON.ARRPOP', id, '$.sharedWith', userIndex);
+
+    if (requesterId === task.ownerId) {
+        await notifyUsers([targetUserId], 'ACCESS_REVOKED', {taskId: id});
+    } else {
+        await notifyUsers([task.ownerId], 'USER_LEFT_TASK', {taskId: id, userId: targetUserId});
+    }
+
+    await logActivity(requesterId, 'REVOKE_ACCESS', {taskId: id, targetUserId});
+
+    res.json({success: true, message: 'Access revoked successfully'});
+};

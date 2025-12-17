@@ -29,6 +29,8 @@ app.delete('/tasks/:id', requireAuth, Task.deleteTask);
 app.post('/tasks/:id/subtasks', requireAuth, Task.addSubtask);
 app.post('/tasks/:id/share', requireAuth, Task.shareTask);
 app.post('/tasks/:id/invite', requireAuth, Task.respondToInvite);
+app.put('/tasks/:id/share/:userId', requireAuth, Task.updateShareRole);
+app.delete('/tasks/:id/share/:userId', requireAuth, Task.revokeAccess);
 
 const PORT = process.env.PORT || 4000;
 

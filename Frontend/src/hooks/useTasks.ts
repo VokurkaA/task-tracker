@@ -20,7 +20,7 @@ export const useCreateTask = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (newTask: {
-            title: string; description?: string; category: string; priority?: Priority; subtasks?: string[]; // Added
+            title: string; description?: string; category: string; priority?: Priority; subtasks?: string[];
         }) => {
             const {data} = await api.post<Task>('/tasks', newTask);
             return data;
@@ -55,10 +55,37 @@ export const useAddSubtask = () => {
 };
 
 export const useShareTask = () => {
+    const queryClient = useQueryClient(); // Add queryClient to invalidate on success
     return useMutation({
         mutationFn: async ({taskId, email, role}: { taskId: string; email: string; role: string }) => {
             const {data} = await api.post(`/tasks/${taskId}/share`, {email, role});
             return data;
+        }, onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ['tasks']});
+        }
+    });
+};
+
+export const useUpdateShareRole = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({taskId, userId, role}: { taskId: string; userId: string; role: string }) => {
+            const {data} = await api.put(`/tasks/${taskId}/share/${userId}`, {role});
+            return data;
+        }, onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ['tasks']});
+        },
+    });
+};
+
+export const useRevokeAccess = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({taskId, userId}: { taskId: string; userId: string }) => {
+            const {data} = await api.delete(`/tasks/${taskId}/share/${userId}`);
+            return data;
+        }, onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ['tasks']});
         },
     });
 };

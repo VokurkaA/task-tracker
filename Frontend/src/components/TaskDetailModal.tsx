@@ -1,8 +1,27 @@
-import {Button, Checkbox, Chip, CloseButton, InputGroup, Modal, Separator, Surface} from "@heroui/react";
-import {useAddSubtask, useDeleteTask, useRespondToInvite, useShareTask, useUpdateTask} from "../hooks/useTasks";
+import {
+    Button,
+    Checkbox,
+    Chip,
+    CloseButton,
+    InputGroup, Label,
+    ListBox,
+    Modal,
+    Select,
+    Separator,
+    Surface
+} from "@heroui/react";
+import {
+    useAddSubtask,
+    useDeleteTask,
+    useRespondToInvite,
+    useRevokeAccess,
+    useShareTask,
+    useUpdateShareRole,
+    useUpdateTask
+} from "../hooks/useTasks";
 import {useAuth} from "../hooks/useAuth";
 import {useMemo, useState} from "react";
-import {Priority, ShareStatus, type Task} from "../types";
+import {Priority, Role, ShareStatus, type Task} from "../types";
 import {toast} from "sonner";
 import {Icon} from "@iconify/react";
 
@@ -20,8 +39,14 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     const {mutate: shareTask, isPending: isSharing} = useShareTask();
     const {mutate: respondToInvite} = useRespondToInvite();
 
+    // Initialize hooks for managing access
+    const {mutate: updateShareRole} = useUpdateShareRole();
+    const {mutate: revokeAccess} = useRevokeAccess();
+
     const [newSubtask, setNewSubtask] = useState("");
     const [shareEmail, setShareEmail] = useState("");
+
+    const isOwner = currentUser?.id === task.ownerId;
 
     const pendingInvite = useMemo(() => {
         return task.sharedWith.find(u => u.userId === currentUser?.id && u.status === ShareStatus.PENDING);
@@ -57,6 +82,19 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
         });
     };
 
+    const handleRoleChange = (userId: string, newRole: string) => {
+        updateShareRole({taskId: task.id, userId, role: newRole}, {
+            onSuccess: () => toast.success("Role updated"), onError: () => toast.error("Failed to update role")
+        });
+    };
+
+    const handleRevoke = (userId: string) => {
+        if (!confirm("Are you sure you want to remove this user?")) return;
+        revokeAccess({taskId: task.id, userId}, {
+            onSuccess: () => toast.success("Access revoked"), onError: () => toast.error("Failed to revoke access")
+        });
+    };
+
     const handleInviteResponse = (accept: boolean) => {
         respondToInvite({taskId: task.id, accept}, {
             onSuccess: () => {
@@ -83,7 +121,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     };
 
     return (<Modal isOpen={isOpen} onOpenChange={onClose}>
-        <Modal.Container>
+        <Modal.Container className="min-w-md">
             <Modal.Dialog className="sm:max-w-xl">
                 <Modal.Header className="flex flex-col gap-3 relative">
                     <CloseButton onPress={onClose} className="absolute right-6 top-6"/>
@@ -114,7 +152,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                     </div>)}
                 </Modal.Header>
 
-                <Modal.Body className="space-y-6">
+                <Modal.Body className="space-y-6 flex flex-col">
                     {task.description && (<Surface className="p-4 rounded-lg bg-default-50 text-sm text-default-600">
                         {task.description}
                     </Surface>)}
@@ -146,7 +184,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                             </div>))}
                         </div>
 
-                        <InputGroup>
+                        <InputGroup className="flex flex-1">
                             <InputGroup.Input
                                 placeholder="Add new subtask..."
                                 value={newSubtask}
@@ -164,13 +202,13 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
 
                     <Separator/>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 flex flex-col">
                         <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
                             <Icon icon="gravity-ui:persons"/>
-                            <span>Collaborators</span>
+                            <Label>Collaborators</Label>
                         </div>
 
-                        <InputGroup>
+                        {isOwner && (<InputGroup className="fles flex-1">
                             <InputGroup.Prefix>
                                 <Icon icon="gravity-ui:envelope" className="text-default-400"/>
                             </InputGroup.Prefix>
@@ -182,29 +220,70 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                                 onChange={(e) => setShareEmail(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleShare()}
                             />
-                            <InputGroup.Suffix>
+                            <InputGroup.Suffix className="p-0">
                                 <Button variant="primary" onPress={handleShare} isPending={isSharing}
                                         isDisabled={isSharing} size="sm">
                                     Invite
                                 </Button>
                             </InputGroup.Suffix>
-                        </InputGroup>
+                        </InputGroup>)}
 
-                        {task.sharedWith && task.sharedWith.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">
-                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm"
-                                                                       color={user.status === ShareStatus.PENDING ? "warning" : "default"}>
-                                <Icon icon="gravity-ui:person" className="mr-1"/>
-                                {user.username || user.email || user.userId.slice(0, 4)}
-                                {user.status === ShareStatus.PENDING ? " (Pending)" : ""}
-                            </Chip>))}
-                        </div>)}
+                        {task.sharedWith && task.sharedWith.length > 0 ? (<div className="flex flex-col gap-2 mt-2">
+                            {task.sharedWith.map((user) => (<div key={user.userId}
+                                                                 className="flex items-center justify-between p-2 rounded-lg border border-default-200 bg-default-50">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                                    <span
+                                                        className="text-sm font-medium">{user.username || user.email}</span>
+                                            {user.status === ShareStatus.PENDING && (
+                                                <Chip size="sm" color="warning" variant="tertiary">Pending</Chip>)}
+                                        </div>
+                                        <span className="text-xs text-default-400">{user.email}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {isOwner ? (<>
+                                        <Select
+                                            aria-label="Change role"
+                                            className="w-24"
+                                            value={user.role}
+                                            onChange={(key) => handleRoleChange(user.userId, key as string)}
+                                        >
+                                            <Select.Trigger className="h-8 min-h-0 px-2 text-xs">
+                                                <Select.Value/>
+                                                <Select.Indicator />
+                                            </Select.Trigger>
+                                            <Select.Popover>
+                                                <ListBox>
+                                                    <ListBox.Item id={Role.EDITOR}
+                                                                  textValue="Editor">Editor</ListBox.Item>
+                                                    <ListBox.Item id={Role.VIEWER}
+                                                                  textValue="Viewer">Viewer</ListBox.Item>
+                                                </ListBox>
+                                            </Select.Popover>
+                                        </Select>
+                                        <Button
+                                            size="sm"
+                                            variant="danger"
+                                            onPress={() => handleRevoke(user.userId)}
+                                        >
+                                            <Icon icon="gravity-ui:trash-bin"/>
+                                        </Button>
+                                    </>) : (<Chip size="sm" variant="soft"
+                                                  className="capitalize">{user.role}</Chip>)}
+                                </div>
+                            </div>))}
+                        </div>) : (<div className="text-sm text-default-400 italic">No collaborators yet.</div>)}
                     </div>
                 </Modal.Body>
 
                 <Modal.Footer className="flex justify-between gap-4">
-                    <Button variant="danger" onPress={handleDelete} isPending={isDeleting}>
+                    {isOwner ? (<Button variant="danger" onPress={handleDelete} isPending={isDeleting}>
                         Delete Task
-                    </Button>
+                    </Button>) : (<div></div>)}
+
                     <Button
                         className="w-full sm:w-auto"
                         variant={task.isCompleted ? "tertiary" : "primary"}
