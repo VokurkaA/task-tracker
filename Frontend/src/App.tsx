@@ -4,6 +4,7 @@ import SignIn from "./components/SignIn";
 import {useAuth} from "./hooks/useAuth";
 import Dashboard from "./components/Dashboard.tsx";
 import {useTasks} from "./hooks/useTasks.ts";
+import {Toaster} from "sonner";
 
 function App() {
     const {user} = useAuth();
@@ -12,10 +13,12 @@ function App() {
 
     if (isLoading) return <></>
 
-    if (user) return <Dashboard/>
+    return (<>
+            <Toaster position="top-center"/>
 
-    return activeScreen === "SignUp" ? (<SignUp setActiveScreen={setActiveScreen}/>) : (
-        <SignIn setActiveScreen={setActiveScreen}/>);
+            {user ? <Dashboard/> : (activeScreen === "SignUp" ? (<SignUp setActiveScreen={setActiveScreen}/>) : (
+                    <SignIn setActiveScreen={setActiveScreen}/>))}
+        </>);
 }
 
 export default App;

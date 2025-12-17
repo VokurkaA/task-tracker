@@ -16,9 +16,10 @@ import {
     ModalFooter,
     ModalHeader,
 } from "@heroui/react";
-import {useAddSubtask, useUpdateTask} from "../hooks/useTasks";
+import {useAddSubtask, useDeleteTask, useShareTask, useUpdateTask} from "../hooks/useTasks";
 import {useMemo, useState} from "react";
 import {Priority, type Task} from "../types.ts";
+import {toast} from "sonner"; 
 
 interface TaskDetailModalProps {
     task: Task;
@@ -29,7 +30,11 @@ interface TaskDetailModalProps {
 export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModalProps) {
     const {mutate: updateTask} = useUpdateTask();
     const {mutate: addSubtask} = useAddSubtask();
+    const {mutate: deleteTask} = useDeleteTask();
+    const {mutate: shareTask, isPending: isSharing} = useShareTask();
+
     const [newSubtask, setNewSubtask] = useState("");
+    const [shareEmail, setShareEmail] = useState("");
 
     const priorityChipColor = useMemo(() => {
         switch (task.priority) {
@@ -49,12 +54,52 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     const handleSubtaskToggle = (subtaskId: string, isComplete: boolean) => {
         const updatedSubtasks = task.subtasks.map(st => st.id === subtaskId ? {...st, isComplete} : st);
         updateTask({id: task.id, updates: {subtasks: updatedSubtasks}});
+        // No toast here to keep UI snappy and less noisy
+    };
+
+    const handleShare = () => {
+        if (!shareEmail.trim()) return;
+        shareTask({taskId: task.id, email: shareEmail, role: 'EDITOR'}, {
+            onSuccess: () => {
+                toast.success(`Invite sent to ${shareEmail}`);
+                setShareEmail("");
+            }, onError: () => {
+                toast.error("Failed to send invite");
+            }
+        });
+    };
+
+    const handleDelete = () => {
+        deleteTask(task.id, {
+            onSuccess: () => {
+                toast.success("Task deleted");
+                onClose();
+            }, onError: () => {
+                toast.error("Failed to delete task");
+            }
+        });
     };
 
     const handleAddSubtask = () => {
         if (!newSubtask.trim()) return;
-        addSubtask({taskId: task.id, title: newSubtask.trim()});
-        setNewSubtask("");
+        addSubtask({taskId: task.id, title: newSubtask.trim()}, {
+            onSuccess: () => {
+                toast.success("Subtask added");
+                setNewSubtask("");
+            }, onError: () => {
+                toast.error("Failed to add subtask");
+            }
+        });
+    };
+
+    const handleToggleComplete = () => {
+        const newStatus = !task.isCompleted;
+        updateTask({id: task.id, updates: {isCompleted: newStatus}}, {
+            onSuccess: () => {
+                toast.success(newStatus ? "Task completed!" : "Task marked as active");
+                if (newStatus) onClose(); // Optional: close modal on completion
+            }
+        });
     };
 
     return (<Modal isOpen={isOpen} onOpenChange={onClose}>
@@ -64,7 +109,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                 <ModalHeader>
                     <h2>{task.title}</h2>
                     <div className="flex justify-between">
-                        <Chip variant="secondary">{task.category}</Chip>
+                        {task.category && <Chip variant="secondary">{task.category}</Chip>}
                         <Chip variant="primary" color={priorityChipColor}>{task.priority}</Chip>
                     </div>
                 </ModalHeader>
@@ -103,10 +148,38 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                             <Button variant="secondary" onPress={handleAddSubtask}>Add</Button>
                         </div>
                     </div>
+                    <div className="space-y-2 border-t pt-4">
+                        <h3 className="text-sm font-semibold uppercase text-default-400">Share Task</h3>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="user@example.com"
+                                value={shareEmail}
+                                onChange={(e) => setShareEmail(e.target.value)}
+                            />
+                            <Button
+                                variant="secondary"
+                                onPress={handleShare}
+                                isDisabled={isSharing}
+                            >
+                                {isSharing ? "Sending..." : "Invite"}
+                            </Button>
+                        </div>
+
+                        {task.sharedWith && task.sharedWith.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">
+                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm">
+                                User {user.userId.slice(0, 5)}... ({user.status})
+                            </Chip>))}
+                        </div>)}
+                    </div>
                 </ModalBody>
                 <ModalFooter className="flex justify-between">
-                    <Button variant="danger">Delete</Button>
-                    <Button variant="primary">Mark complete</Button>
+                    <Button variant="danger" onPress={handleDelete}>Delete</Button>
+                    <Button
+                        variant={task.isCompleted ? "secondary" : "primary"}
+                        onPress={handleToggleComplete}
+                    >
+                        {task.isCompleted ? "Mark incomplete" : "Mark complete"}
+                    </Button>
                 </ModalFooter>
             </ModalDialog>
         </ModalContainer>

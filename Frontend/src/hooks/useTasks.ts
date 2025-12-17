@@ -69,3 +69,15 @@ export const useRespondToInvite = () => {
         },
     });
 };
+
+export const useDeleteTask = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (taskId: string) => {
+            const {data} = await api.delete(`/tasks/${taskId}`);
+            return data;
+        }, onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ['tasks']});
+        },
+    });
+};
