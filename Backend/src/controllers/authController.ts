@@ -10,6 +10,10 @@ export const signup = async (req: Request, res: Response) => {
     const {email, password, username} = req.body;
     const id = `user:${uuidv4()}`;
 
+    if (!email || !password || !username || email.trim() === "" || password.trim() === "" || username.trim() === "") {
+        return res.status(400).json({error: 'All fields are required'});
+    }
+
     const existing = await redis.call('FT.SEARCH', 'idx:users', `@email:{${escapeTag(email)}}`);
     if ((existing as any)[0] > 0) return res.status(400).json({error: 'Email exists'});
 
@@ -31,6 +35,10 @@ export const signup = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     const {email, password} = req.body;
+
+    if (!email || !password || email.trim() === "" || password.trim() === "") {
+        return res.status(400).json({error: 'Email and password are required'});
+    }
 
     const result: any = await redis.call('FT.SEARCH', 'idx:users', `@email:{${escapeTag(email)}}`);
 

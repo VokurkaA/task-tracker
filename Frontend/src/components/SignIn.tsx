@@ -24,21 +24,42 @@ export default function SignIn({setActiveScreen}: {
     setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void;
 }) {
     const {login} = useAuth();
-    const [error, setError] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [apiError, setApiError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError(null);
-        setIsLoading(true);
+        setApiError(null);
+        setErrors({});
 
         const formData = new FormData(e.currentTarget);
+        const data = Object.fromEntries(formData);
+        const email = String(data.email).trim();
+        const password = String(data.password).trim();
+
+        const newErrors: Record<string, string> = {};
+
+        if (!email) {
+            newErrors.email = "Email is required";
+        }
+        if (!password) {
+            newErrors.password = "Password is required";
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setIsLoading(true);
+
         try {
             await login({
-                email: String(formData.get("email")), password: String(formData.get("password"))
+                email, password
             });
         } catch (err: any) {
-            setError(err?.response?.data?.error || "Invalid email or password");
+            setApiError(err?.response?.data?.error || "Invalid email or password");
         } finally {
             setIsLoading(false);
         }
@@ -55,11 +76,15 @@ export default function SignIn({setActiveScreen}: {
                 <Description>Sign in to your account to continue</Description>
             </CardHeader>
 
-            <Form validationBehavior="native" onSubmit={onSubmit}>
+            <Form
+                validationBehavior="native"
+                onSubmit={onSubmit}
+                validationErrors={errors}
+            >
                 <CardContent className="space-y-4">
-                    {error && (<Alert status="danger">
+                    {apiError && (<Alert status="danger">
                         <Icon icon="gravity-ui:circle-exclamation-fill" className="text-danger"/>
-                        <span className="ml-2 text-sm font-medium">{error}</span>
+                        <span className="ml-2 text-sm font-medium">{apiError}</span>
                     </Alert>)}
 
                     <TextField isRequired name="email" type="email">
@@ -74,7 +99,6 @@ export default function SignIn({setActiveScreen}: {
                     <TextField isRequired name="password" type="password">
                         <div className="flex justify-between">
                             <Label>Password</Label>
-                            <Link href="#" className="text-xs text-default-500">Forgot password?</Link>
                         </div>
                         <InputGroup>
                             <InputGroup.Prefix><Icon icon="gravity-ui:key"/></InputGroup.Prefix>

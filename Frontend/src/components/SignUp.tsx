@@ -13,18 +13,18 @@ import {
     Label,
     Link,
     Separator,
-    TextField
+    TextField,
 } from "@heroui/react";
-import {Icon} from "@iconify/react";
-import * as React from "react";
 import {type SetStateAction, useState} from "react";
-import {useAuth} from "../hooks/useAuth";
+import {useAuth} from "../hooks/useAuth.ts";
+import {Icon} from "@iconify/react";
 
 export default function SignUp({setActiveScreen}: {
     setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void;
 }) {
     const {signup} = useAuth();
-    const [error, setError] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [apiError, setApiError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const validatePassword = (val: string) => {
@@ -36,18 +36,43 @@ export default function SignUp({setActiveScreen}: {
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError(null);
-        setIsLoading(true);
+        setApiError(null);
 
         const formData = new FormData(e.currentTarget);
+        const data = Object.fromEntries(formData);
+
+        const newErrors: Record<string, string> = {};
+
+        if (!String(data.username).trim()) {
+            newErrors.username = "Username is required";
+        }
+
+        if (!String(data.email).trim()) {
+            newErrors.email = "Email is required";
+        }
+
+        const password = String(data.password);
+        if (!password) {
+            newErrors.password = "Password is required";
+        } else {
+            const passIssue = validatePassword(password);
+            if (passIssue) newErrors.password = passIssue;
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setErrors({});
+        setIsLoading(true);
+
         try {
             await signup({
-                username: String(formData.get("username")),
-                email: String(formData.get("email")),
-                password: String(formData.get("password"))
+                username: String(data.username), email: String(data.email), password: String(data.password)
             });
         } catch (err: any) {
-            setError(err?.response?.data?.error || "Sign up failed");
+            setApiError(err?.response?.data?.error || "Sign up failed");
         } finally {
             setIsLoading(false);
         }
@@ -63,12 +88,17 @@ export default function SignUp({setActiveScreen}: {
                 <CardTitle className="text-2xl">Create Account</CardTitle>
                 <Description>Join us to start tracking your tasks</Description>
             </CardHeader>
-
-            <Form validationBehavior="native" onSubmit={onSubmit}>
+            {/* 4. Pass the errors object to the Form component */}
+            <Form
+                validationBehavior="native"
+                onSubmit={onSubmit}
+                validationErrors={errors}
+            >
                 <CardContent className="space-y-4">
-                    {error && (<Alert status="danger">
+                    {/* Only show the Alert for generic API errors */}
+                    {apiError && (<Alert status="danger">
                         <Icon icon="gravity-ui:circle-exclamation-fill" className="text-danger"/>
-                        <span className="ml-2 text-sm font-medium">{error}</span>
+                        <span className="ml-2 text-sm font-medium">{apiError}</span>
                     </Alert>)}
 
                     <TextField isRequired name="username">
@@ -77,6 +107,7 @@ export default function SignUp({setActiveScreen}: {
                             <InputGroup.Prefix><Icon icon="gravity-ui:person"/></InputGroup.Prefix>
                             <InputGroup.Input placeholder="johndoe"/>
                         </InputGroup>
+                        {/* This will now automatically render "Username is required" when set in state */}
                         <FieldError/>
                     </TextField>
 
