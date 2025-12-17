@@ -12,11 +12,9 @@ function App() {
     const [activeScreen, setActiveScreen] = useState<"SignIn" | "SignUp">("SignIn");
 
     if (isLoading) return <Loading/>
-
-    return (<>
-        {user ? <Dashboard/> : (activeScreen === "SignUp" ? (<SignUp setActiveScreen={setActiveScreen}/>) : (
-            <SignIn setActiveScreen={setActiveScreen}/>))}
-    </>);
+    if (user) return <Dashboard/>
+    return activeScreen === "SignIn" ? <SignIn setActiveScreen={setActiveScreen}/> :
+        <SignUp setActiveScreen={setActiveScreen}/>
 }
 
 export default App;

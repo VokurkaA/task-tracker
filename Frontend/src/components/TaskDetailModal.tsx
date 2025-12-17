@@ -1,4 +1,4 @@
-import {Button, Checkbox, Chip, InputGroup, Modal, Separator, Surface} from "@heroui/react";
+import {Button, Checkbox, Chip, CloseButton, InputGroup, Modal, Separator, Surface} from "@heroui/react";
 import {useAddSubtask, useDeleteTask, useShareTask, useUpdateTask} from "../hooks/useTasks";
 import {useMemo, useState} from "react";
 import {Priority, type Task} from "../types";
@@ -69,9 +69,13 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     return (<Modal isOpen={isOpen} onOpenChange={onClose}>
         <Modal.Container>
             <Modal.Dialog className="sm:max-w-xl">
-                <Modal.CloseTrigger/>
-                <Modal.Header className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between pr-8">
+                <Modal.Header className="flex flex-col gap-3 relative">
+                    <CloseButton
+                        onPress={onClose}
+                        className="absolute right-6 top-6"
+                    />
+
+                    <div className="flex items-center justify-between">
                         <Modal.Heading className="text-xl font-bold truncate">
                             {task.title}
                         </Modal.Heading>
@@ -91,7 +95,6 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                         {task.description}
                     </Surface>)}
 
-                    {/* Subtasks Section */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
                             <Icon icon="gravity-ui:list-check"/>
@@ -104,8 +107,9 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                                 className="group flex items-center gap-3 p-2 hover:bg-default-100 rounded-md transition-colors"
                             >
                                 <Checkbox
+                                    aria-label={`Mark subtask ${st.title} as ${st.isComplete ? 'incomplete' : 'complete'}`}
                                     isSelected={st.isComplete}
-                                    onChange={() => handleSubtaskToggle(st.id, !st.isComplete)}
+                                    onChange={(isSelected) => handleSubtaskToggle(st.id, isSelected)}
                                 >
                                     <Checkbox.Control>
                                         <Checkbox.Indicator/>
@@ -136,7 +140,6 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
 
                     <Separator/>
 
-                    {/* Collaborators Section */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
                             <Icon icon="gravity-ui:persons"/>

@@ -46,10 +46,6 @@ export default function TaskList() {
 
     const activeCount = tasks?.filter(t => !t.isCompleted).length || 0;
 
-    const handleToggle = (id: string, currentStatus: boolean) => {
-        updateTask({id, updates: {isCompleted: !currentStatus}});
-    };
-
     if (isLoading) {
         return (<div className="flex justify-center p-12">
             <Icon icon="gravity-ui:arrows-rotate-right" className="animate-spin text-3xl text-default-300"/>
@@ -81,6 +77,7 @@ export default function TaskList() {
 
             <div className="w-full sm:w-64">
                 <ComboBox
+                    aria-label="Filter by category"
                     selectedKey={categoryFilter}
                     onSelectionChange={(key) => setCategoryFilter(key as string)}
                     allowsCustomValue={false}
@@ -91,7 +88,10 @@ export default function TaskList() {
                     </ComboBox.InputGroup>
                     <ComboBox.Popover>
                         <ListBox>
-                            <ListBox.Item id="all">All Categories</ListBox.Item>
+                            <ListBox.Item id="all" textValue="All Categories">
+                                All Categories
+                            </ListBox.Item>
+
                             {categories.map((cat) => (<ListBox.Item id={cat.id} key={cat.id} textValue={cat.name}>
                                 {cat.name}
                             </ListBox.Item>))}
@@ -101,7 +101,13 @@ export default function TaskList() {
             </div>
         </div>
 
-        {isError && <Alert status="danger" className="mb-4">Failed to load tasks.</Alert>}
+        {isError && <Alert status="danger" className="mb-4">
+            <Alert.Indicator/>
+            <Alert.Content>
+                <Alert.Title>Error</Alert.Title>
+                <Alert.Description>Failed to load tasks.</Alert.Description>
+            </Alert.Content>
+        </Alert>}
 
         <div className="flex flex-col gap-2">
             {filteredTasks.length === 0 ? (<div
@@ -141,7 +147,7 @@ export default function TaskList() {
                 >
                     <Checkbox
                         isSelected={t.isCompleted}
-                        onChange={() => handleToggle(t.id, t.isCompleted)}
+                        onChange={(isSelected) => updateTask({id: t.id, updates: {isCompleted: isSelected}})}
                     >
                         <Checkbox.Control>
                             <Checkbox.Indicator/>
