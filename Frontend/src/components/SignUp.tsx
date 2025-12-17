@@ -1,158 +1,239 @@
-import {
-    Alert,
-    Button,
-    Card,
-    CardContent,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-    Description,
-    FieldError,
-    Form,
-    InputGroup,
-    Label,
-    Link,
-    Separator,
-    TextField,
-} from "@heroui/react";
-import {type SetStateAction, useState} from "react";
-import {useAuth} from "../hooks/useAuth.ts";
+import {Avatar, Button, Card, FieldError, Form, InputGroup, Label, Link, TextField,} from "@heroui/react";
+import React, {type SetStateAction, useState} from "react";
+import {useAuth} from "../hooks/useAuth";
+import {toast} from "sonner";
 import {Icon} from "@iconify/react";
 
-export default function SignUp({setActiveScreen}: {
+type SignUpProps = {
     setActiveScreen: (activeScreen: SetStateAction<"SignIn" | "SignUp">) => void;
-}) {
-    const {signup} = useAuth();
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [apiError, setApiError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+};
 
-    const validatePassword = (val: string) => {
-        if (val.length < 6) return "Min 6 chars";
-        if (!/[A-Z]/.test(val)) return "Needs uppercase";
-        if (!/[0-9]/.test(val)) return "Needs number";
+export default function SignUp({setActiveScreen}: SignUpProps) {
+    const {signup} = useAuth();
+
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+
+    const [isVisible, setIsVisible] = useState(false);
+    const [isConfirmVisible, setIsConfirmVisible] = useState(false);
+
+    const getUsernameError = (value: string) => {
+        if (!value) return "Username is required";
+        if (value.length < 3) return "Username must be at least 3 characters";
+        return null;
+    };
+
+    const getEmailError = (value: string) => {
+        if (!value) return "Email is required";
+        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) {
+            return "Please enter a valid email address";
+        }
+        return null;
+    };
+
+    const getPasswordError = (value: string) => {
+        if (!value) return "Password is required";
+        if (value.length < 6) return "Password must be at least 6 characters";
+        return null;
+    };
+
+    const getConfirmPasswordError = (value: string) => {
+        if (!value) return "Please confirm your password";
+        if (value !== password) return "Passwords do not match";
         return null;
     };
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setApiError(null);
 
-        const formData = new FormData(e.currentTarget);
-        const data = Object.fromEntries(formData);
+        const usernameError = getUsernameError(username);
+        const emailError = getEmailError(email);
+        const passwordError = getPasswordError(password);
+        const confirmPasswordError = getConfirmPasswordError(confirmPassword);
 
-        const newErrors: Record<string, string> = {};
-
-        if (!String(data.username).trim()) {
-            newErrors.username = "Username is required";
-        }
-
-        if (!String(data.email).trim()) {
-            newErrors.email = "Email is required";
-        }
-
-        const password = String(data.password);
-        if (!password) {
-            newErrors.password = "Password is required";
-        } else {
-            const passIssue = validatePassword(password);
-            if (passIssue) newErrors.password = passIssue;
-        }
-
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
+        if (usernameError || emailError || passwordError || confirmPasswordError) {
+            toast.error(usernameError || emailError || passwordError || confirmPasswordError);
             return;
         }
 
-        setErrors({});
-        setIsLoading(true);
-
         try {
-            await signup({
-                username: String(data.username), email: String(data.email), password: String(data.password)
-            });
+            await signup({username, email, password});
+            toast.success("Account created successfully!");
+            setActiveScreen("SignIn");
         } catch (err: any) {
-            setApiError(err?.response?.data?.error || "Sign up failed");
-        } finally {
-            setIsLoading(false);
+            toast.error(err?.response?.data?.error || "Registration failed. Please try again.");
         }
     };
 
-    return (<div className="h-svh w-full flex items-center justify-center bg-default-50 p-4">
-        <Card className="w-full max-w-md shadow-xl p-6">
-            <CardHeader className="text-center pb-2">
-                <div
-                    className="mx-auto bg-success/10 w-12 h-12 rounded-full flex items-center justify-center mb-4 text-success">
-                    <Icon icon="gravity-ui:person-plus" className="text-2xl"/>
-                </div>
-                <CardTitle className="text-2xl">Create Account</CardTitle>
-                <Description>Join us to start tracking your tasks</Description>
-            </CardHeader>
-            {/* 4. Pass the errors object to the Form component */}
-            <Form
-                validationBehavior="native"
-                onSubmit={onSubmit}
-                validationErrors={errors}
-            >
-                <CardContent className="space-y-4">
-                    {/* Only show the Alert for generic API errors */}
-                    {apiError && (<Alert status="danger">
-                        <Icon icon="gravity-ui:circle-exclamation-fill" className="text-danger"/>
-                        <span className="ml-2 text-sm font-medium">{apiError}</span>
-                    </Alert>)}
-
-                    <TextField isRequired name="username">
+    return (<div className="h-svh flex items-center justify-center">
+        <Card className="w-md p-8 my-4 overflow-y-auto max-h-[90vh]">
+            <Card.Header className="flex items-center">
+                <Avatar className="mb-4 size-16">
+                    <Avatar.Fallback>
+                        <Icon className="size-6" icon="gravity-ui:person-plus"/>
+                    </Avatar.Fallback>
+                </Avatar>
+                <Card.Title className="text-2xl">Create Account</Card.Title>
+                <Card.Description>Sign up to get started</Card.Description>
+            </Card.Header>
+            <Card.Content>
+                <Form
+                    className="space-y-4"
+                    validationBehavior="aria"
+                    onSubmit={onSubmit}
+                >
+                    <TextField
+                        isRequired
+                        name="username"
+                        value={username}
+                        onChange={setUsername}
+                        validate={(val) => {
+                            if (!val) return null;
+                            return getUsernameError(val);
+                        }}
+                    >
                         <Label>Username</Label>
                         <InputGroup>
-                            <InputGroup.Prefix><Icon icon="gravity-ui:person"/></InputGroup.Prefix>
-                            <InputGroup.Input placeholder="johndoe"/>
+                            <InputGroup.Prefix>
+                                <Icon className="text-muted size-4" icon="gravity-ui:person"/>
+                            </InputGroup.Prefix>
+                            <InputGroup.Input
+                                name="username"
+                                type="text"
+                                autoComplete="username"
+                                placeholder="johndoe"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                            />
                         </InputGroup>
-                        {/* This will now automatically render "Username is required" when set in state */}
                         <FieldError/>
                     </TextField>
 
-                    <TextField isRequired name="email" type="email">
+                    <TextField
+                        isRequired
+                        name="email"
+                        value={email}
+                        onChange={setEmail}
+                        validate={(val) => {
+                            if (!val) return null;
+                            return getEmailError(val);
+                        }}
+                    >
                         <Label>Email</Label>
                         <InputGroup>
-                            <InputGroup.Prefix><Icon icon="gravity-ui:envelope"/></InputGroup.Prefix>
-                            <InputGroup.Input placeholder="john@example.com"/>
+                            <InputGroup.Prefix>
+                                <Icon
+                                    className="text-muted size-4"
+                                    icon="gravity-ui:envelope"
+                                />
+                            </InputGroup.Prefix>
+                            <InputGroup.Input
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                placeholder="name@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
                         </InputGroup>
                         <FieldError/>
                     </TextField>
 
-                    <TextField isRequired name="password" type="password" validate={validatePassword}>
+                    <TextField
+                        isRequired
+                        name="password"
+                        value={password}
+                        onChange={setPassword}
+                        validate={(val) => {
+                            if (!val) return null;
+                            return getPasswordError(val);
+                        }}
+                    >
                         <Label>Password</Label>
                         <InputGroup>
-                            <InputGroup.Prefix><Icon icon="gravity-ui:lock"/></InputGroup.Prefix>
-                            <InputGroup.Input placeholder="Create a strong password"/>
+                            <InputGroup.Prefix>
+                                <Icon icon="gravity-ui:lock"/>
+                            </InputGroup.Prefix>
+                            <InputGroup.Input
+                                name="password"
+                                type={isVisible ? "text" : "password"}
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                            <InputGroup.Suffix>
+                                <Button
+                                    isIconOnly
+                                    aria-label={isVisible ? "Hide password" : "Show password"}
+                                    size="sm"
+                                    variant="ghost"
+                                    onPress={() => setIsVisible(!isVisible)}
+                                >
+                                    <Icon
+                                        className="size-4"
+                                        icon={isVisible ? "gravity-ui:eye" : "gravity-ui:eye-slash"}
+                                    />
+                                </Button>
+                            </InputGroup.Suffix>
                         </InputGroup>
-                        <Description className="text-xs">
-                            Must contain 1 uppercase, 1 number, and 6+ characters.
-                        </Description>
                         <FieldError/>
                     </TextField>
-                </CardContent>
 
-                <CardFooter className="flex flex-col gap-4 pt-2">
-                    <Button type="submit" variant="primary" className="w-full" isPending={isLoading}>
-                        Get Started
+                    <TextField
+                        isRequired
+                        name="confirmPassword"
+                        value={confirmPassword}
+                        onChange={setConfirmPassword}
+                        validate={(val) => {
+                            if (!val) return null;
+                            return getConfirmPasswordError(val);
+                        }}
+                    >
+                        <Label>Confirm Password</Label>
+                        <InputGroup>
+                            <InputGroup.Prefix>
+                                <Icon icon="gravity-ui:lock"/>
+                            </InputGroup.Prefix>
+                            <InputGroup.Input
+                                name="confirmPassword"
+                                type={isConfirmVisible ? "text" : "password"}
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                            <InputGroup.Suffix>
+                                <Button
+                                    isIconOnly
+                                    aria-label={isConfirmVisible ? "Hide password" : "Show password"}
+                                    size="sm"
+                                    variant="ghost"
+                                    onPress={() => setIsConfirmVisible(!isConfirmVisible)}
+                                >
+                                    <Icon
+                                        className="size-4"
+                                        icon={isConfirmVisible ? "gravity-ui:eye" : "gravity-ui:eye-slash"}
+                                    />
+                                </Button>
+                            </InputGroup.Suffix>
+                        </InputGroup>
+                        <FieldError/>
+                    </TextField>
+
+                    <Button className="flex-1 w-full" type="submit" variant="primary">
+                        Create Account
                     </Button>
-
-                    <div className="flex items-center gap-2 w-full">
-                        <Separator className="flex-1"/>
-                        <span className="text-xs text-default-400">OR</span>
-                        <Separator className="flex-1"/>
-                    </div>
-
-                    <div className="text-center text-sm text-default-500">
-                        Already have an account?{" "}
-                        <Link onPress={() => setActiveScreen("SignIn")}
-                              className="cursor-pointer font-semibold text-primary">
-                            Sign in
-                        </Link>
-                    </div>
-                </CardFooter>
-            </Form>
+                </Form>
+            </Card.Content>
+            <Card.Footer className="flex items-center justify-center">
+                <Link onPress={() => setActiveScreen("SignIn")}>
+                    Already have an account? Log in
+                    <Link.Icon/>
+                </Link>
+            </Card.Footer>
         </Card>
     </div>);
 }
