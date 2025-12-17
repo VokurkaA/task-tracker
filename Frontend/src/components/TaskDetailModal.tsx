@@ -1,26 +1,7 @@
-"use client";
-
-import {
-    Button,
-    Checkbox,
-    CheckboxControl,
-    CheckboxIndicator,
-    Chip,
-    Input,
-    InputGroup,
-    Modal,
-    ModalBody,
-    ModalCloseTrigger,
-    ModalContainer,
-    ModalDialog,
-    ModalFooter,
-    ModalHeader,
-    Separator,
-    Surface
-} from "@heroui/react";
+import {Button, Checkbox, Chip, InputGroup, Modal, Separator, Surface} from "@heroui/react";
 import {useAddSubtask, useDeleteTask, useShareTask, useUpdateTask} from "../hooks/useTasks";
 import {useMemo, useState} from "react";
-import {Priority, type Task} from "../types.ts";
+import {Priority, type Task} from "../types";
 import {toast} from "sonner";
 import {Icon} from "@iconify/react";
 
@@ -39,7 +20,7 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     const [newSubtask, setNewSubtask] = useState("");
     const [shareEmail, setShareEmail] = useState("");
 
-    const priorityChipColor = useMemo(() => {
+    const priorityColor = useMemo(() => {
         switch (task.priority) {
             case Priority.LOW:
                 return "success";
@@ -81,33 +62,36 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
     const handleAddSubtask = () => {
         if (!newSubtask.trim()) return;
         addSubtask({taskId: task.id, title: newSubtask.trim()}, {
-            onSuccess: () => {
-                setNewSubtask("");
-            }, onError: () => toast.error("Failed to add subtask")
+            onSuccess: () => setNewSubtask(""), onError: () => toast.error("Failed to add subtask")
         });
     };
 
     return (<Modal isOpen={isOpen} onOpenChange={onClose}>
-        <ModalContainer>
-            <ModalDialog className="sm:max-w-xl">
-                <ModalCloseTrigger/>
-                <ModalHeader className="flex flex-col gap-2">
+        <Modal.Container>
+            <Modal.Dialog className="sm:max-w-xl">
+                <Modal.CloseTrigger/>
+                <Modal.Header className="flex flex-col gap-3">
                     <div className="flex items-center justify-between pr-8">
-                        <h2 className="text-xl font-bold truncate">{task.title}</h2>
+                        <Modal.Heading className="text-xl font-bold truncate">
+                            {task.title}
+                        </Modal.Heading>
                     </div>
                     <div className="flex gap-2">
-                        <Chip variant="tertiary" color={priorityChipColor} size="sm" className="capitalize">
+                        <Chip variant="soft" color={priorityColor} size="sm" className="capitalize">
                             {task.priority} Priority
                         </Chip>
-                        {task.category && <Chip variant="tertiary" color="default" size="sm">{task.category}</Chip>}
+                        {task.category && (<Chip variant="soft" color="default" size="sm">
+                            {task.category}
+                        </Chip>)}
                     </div>
-                </ModalHeader>
+                </Modal.Header>
 
-                <ModalBody className="space-y-6">
-                    {task.description && (<Surface className="p-3 bg-default-50 rounded-lg text-sm text-default-600">
+                <Modal.Body className="space-y-6">
+                    {task.description && (<Surface className="p-4 rounded-lg bg-default-50 text-sm text-default-600">
                         {task.description}
                     </Surface>)}
 
+                    {/* Subtasks Section */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
                             <Icon icon="gravity-ui:list-check"/>
@@ -115,13 +99,17 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            {task.subtasks.map((st) => (<div key={st.id}
-                                                             className="group flex items-center gap-3 p-2 hover:bg-default-100 rounded-md transition-colors">
+                            {task.subtasks.map((st) => (<div
+                                key={st.id}
+                                className="group flex items-center gap-3 p-2 hover:bg-default-100 rounded-md transition-colors"
+                            >
                                 <Checkbox
                                     isSelected={st.isComplete}
                                     onChange={() => handleSubtaskToggle(st.id, !st.isComplete)}
                                 >
-                                    <CheckboxControl><CheckboxIndicator/></CheckboxControl>
+                                    <Checkbox.Control>
+                                        <Checkbox.Indicator/>
+                                    </Checkbox.Control>
                                 </Checkbox>
                                 <span
                                     className={`text-sm flex-1 ${st.isComplete ? "line-through text-default-400" : ""}`}>
@@ -131,20 +119,24 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                         </div>
 
                         <InputGroup>
-                            <Input
+                            <InputGroup.Input
                                 placeholder="Add new subtask..."
                                 value={newSubtask}
                                 onChange={(e) => setNewSubtask(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
                             />
-                            <Button variant="secondary" onPress={handleAddSubtask} isDisabled={isAddingSubtask}>
-                                Add
-                            </Button>
+                            <InputGroup.Suffix>
+                                <Button variant="secondary" onPress={handleAddSubtask} isDisabled={isAddingSubtask}
+                                        size="sm">
+                                    Add
+                                </Button>
+                            </InputGroup.Suffix>
                         </InputGroup>
                     </div>
 
                     <Separator/>
 
+                    {/* Collaborators Section */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm font-semibold text-default-500">
                             <Icon icon="gravity-ui:persons"/>
@@ -155,28 +147,30 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                             <InputGroup.Prefix>
                                 <Icon icon="gravity-ui:envelope" className="text-default-400"/>
                             </InputGroup.Prefix>
-                            <Input
+                            <InputGroup.Input
                                 placeholder="Invite via email..."
                                 value={shareEmail}
                                 onChange={(e) => setShareEmail(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleShare()}
                             />
-                            <Button variant="primary" onPress={handleShare} isPending={isSharing}
-                                    isDisabled={isSharing}>
-                                Invite
-                            </Button>
+                            <InputGroup.Suffix>
+                                <Button variant="primary" onPress={handleShare} isPending={isSharing}
+                                        isDisabled={isSharing} size="sm">
+                                    Invite
+                                </Button>
+                            </InputGroup.Suffix>
                         </InputGroup>
 
-                        {task.sharedWith?.length > 0 && (<div className="flex flex-wrap gap-2">
-                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="tertiary" size="sm">
-                                <Icon icon="gravity-ui:person"/>
+                        {task.sharedWith && task.sharedWith.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">
+                            {task.sharedWith.map((user, idx) => (<Chip key={idx} variant="soft" size="sm">
+                                <Icon icon="gravity-ui:person" className="mr-1"/>
                                 User {user.userId.slice(0, 4)} ({user.status})
                             </Chip>))}
                         </div>)}
                     </div>
-                </ModalBody>
+                </Modal.Body>
 
-                <ModalFooter className="flex justify-between gap-4">
+                <Modal.Footer className="flex justify-between gap-4">
                     <Button variant="danger" onPress={handleDelete} isPending={isDeleting}>
                         Delete Task
                     </Button>
@@ -189,8 +183,8 @@ export default function TaskDetailModal({task, isOpen, onClose}: TaskDetailModal
                     >
                         {task.isCompleted ? "Mark Incomplete" : "Mark Complete"}
                     </Button>
-                </ModalFooter>
-            </ModalDialog>
-        </ModalContainer>
+                </Modal.Footer>
+            </Modal.Dialog>
+        </Modal.Container>
     </Modal>);
 }
