@@ -1,0 +1,52 @@
+<mxfile host="65bd71144e">
+    <diagram id="fHEs9OH7l_JJuXiD0_Gf" name="Page-1">
+        <mxGraphModel dx="1002" dy="1347" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="3" value="Docker Compose Host" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="352" y="20" width="569" height="402" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Uživatel&#xa;Prohlížeč" style="ellipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="217" width="82" height="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Frontend Service&#xa;Nginx + React&#xa;Port: 3000" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="377" y="55" width="182" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Backend Service&#xa;Node.js API&#xa;Port: 4000" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="378" y="207" width="180" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Redis Stack&#xa;Database + Streams&#xa;Port: 6379" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=10;strokeWidth=2;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="735" y="242" width="161" height="129" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="1. Načtení aplikace (HTTP)" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.04;entryX=0;entryY=0.5;rounded=0;" edge="1" parent="1" source="4" target="5">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="227" y="106"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="9" value="2. API Requesty / WebSocket" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;" edge="1" parent="1" source="4" target="6">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="10" value="3. Čtení/Zápis dat" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.32;rounded=0;" edge="1" parent="1" source="6" target="7">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="647" y="258"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="11" value="4. Debug (Insight :8001)" style="curved=1;dashed=1;dashPattern=2 3;startArrow=none;endArrow=block;exitX=1;exitY=0.79;entryX=0;entryY=0.69;rounded=0;" edge="1" parent="1" source="4" target="7">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="227" y="356"/>
+                            <mxPoint x="647" y="356"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
